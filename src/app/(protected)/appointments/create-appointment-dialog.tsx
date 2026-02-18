@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createAppointment } from '@/app/appointments/actions'
 import { ClientSelector } from './client-selector'
+import { formatPhone } from '@/lib/utils'
 
 interface Client {
   id: string
@@ -78,7 +79,7 @@ export function CreateAppointmentDialog({ services, clients, isOpen: externalIsO
   useEffect(() => {
     if (selectedClient) {
       setClientName(selectedClient.name)
-      setClientPhone(selectedClient.phone || '')
+      setClientPhone(formatPhone(selectedClient.phone || ''))
     } else if (!isNewClientMode) {
       setClientName('')
       setClientPhone('')
@@ -152,7 +153,7 @@ export function CreateAppointmentDialog({ services, clients, isOpen: externalIsO
                       {isNewClientMode ? 'Novo Cliente' : selectedClient?.name}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {isNewClientMode ? 'Preencha os dados abaixo' : selectedClient?.phone || 'Sem telefone'}
+                      {isNewClientMode ? 'Preencha os dados abaixo' : (selectedClient?.phone ? formatPhone(selectedClient.phone) : 'Sem telefone')}
                     </p>
                   </div>
                 </div>
@@ -164,6 +165,7 @@ export function CreateAppointmentDialog({ services, clients, isOpen: externalIsO
           </div>
 
           <input type="hidden" name="client_id" value={selectedClient?.id || ''} />
+          <input type="hidden" name="is_new_client" value={isNewClientMode ? 'true' : 'false'} />
 
           {(selectedClient || isNewClientMode) && (
             <>
@@ -188,7 +190,7 @@ export function CreateAppointmentDialog({ services, clients, isOpen: externalIsO
                   name="client_phone" 
                   placeholder="(00) 00000-0000" 
                   value={clientPhone}
-                  onChange={(e) => setClientPhone(e.target.value)}
+                  onChange={(e) => setClientPhone(formatPhone(e.target.value))}
                   readOnly={!!selectedClient}
                   className={selectedClient ? 'bg-gray-100' : ''}
                 />

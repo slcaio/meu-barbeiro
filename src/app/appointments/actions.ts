@@ -6,10 +6,12 @@ import { z } from 'zod'
 
 const appointmentSchema = z.object({
   client_name: z.string().min(2, 'Nome do cliente é obrigatório'),
-  client_phone: z.string().optional(),
+  client_phone: z.string().nullish(),
+  client_id: z.string().nullish(),
+  is_new_client: z.string().nullish(),
   service_id: z.string().uuid('Serviço inválido'),
   appointment_date: z.string().datetime(), // ISO string from frontend
-  notes: z.string().optional(),
+  notes: z.string().nullish(),
 })
 
 export async function createAppointment(formData: FormData) {
@@ -20,6 +22,8 @@ export async function createAppointment(formData: FormData) {
   const rawData = {
     client_name: formData.get('client_name'),
     client_phone: formData.get('client_phone'),
+    client_id: formData.get('client_id'),
+    is_new_client: formData.get('is_new_client'),
     service_id: formData.get('service_id'),
     appointment_date: formData.get('appointment_date'), // Expecting ISO string or similar
     notes: formData.get('notes'),
@@ -43,6 +47,28 @@ export async function createAppointment(formData: FormData) {
 
   if (!barbershop) return { error: 'Barbearia não encontrada.' }
 
+  // Handle New Client Creation
+  let finalClientId = validation.data.client_id
+
+  if (validation.data.is_new_client === 'true') {
+    const { data: newClient, error: createClientError } = await supabase
+      .from('clients')
+      .insert({
+        barbershop_id: barbershop.id,
+        name: validation.data.client_name,
+        phone: validation.data.client_phone || null,
+      })
+      .select('id')
+      .single()
+
+    if (createClientError) {
+      console.error('Error creating new client:', createClientError)
+      return { error: 'Erro ao criar novo cliente.' }
+    }
+
+    finalClientId = newClient.id
+  }
+
   // Get service price for total_amount
   const { data: service } = await supabase
     .from('services')
@@ -58,6 +84,7 @@ export async function createAppointment(formData: FormData) {
       barbershop_id: barbershop.id,
       service_id: validation.data.service_id,
       user_id: user.id,
+      client_id: finalClientId || null,
       client_name: validation.data.client_name,
       client_phone: validation.data.client_phone || '',
       appointment_date: validation.data.appointment_date,
