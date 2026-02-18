@@ -9,7 +9,8 @@ import {
   Settings, 
   LogOut, 
   Menu,
-  Scissors
+  Scissors,
+  Users
 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -19,6 +20,7 @@ import { cn } from '@/lib/utils'
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Agenda', href: '/appointments', icon: Calendar },
+  { name: 'Clientes', href: '/clients', icon: Users },
   { name: 'Financeiro', href: '/financial', icon: DollarSign },
   { name: 'Configurações', href: '/settings', icon: Settings },
 ]

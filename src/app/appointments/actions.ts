@@ -6,7 +6,7 @@ import { z } from 'zod'
 
 const appointmentSchema = z.object({
   client_name: z.string().min(2, 'Nome do cliente é obrigatório'),
-  client_phone: z.string().min(8, 'Telefone do cliente é obrigatório'),
+  client_phone: z.string().optional(),
   service_id: z.string().uuid('Serviço inválido'),
   appointment_date: z.string().datetime(), // ISO string from frontend
   notes: z.string().optional(),
@@ -59,7 +59,7 @@ export async function createAppointment(formData: FormData) {
       service_id: validation.data.service_id,
       user_id: user.id,
       client_name: validation.data.client_name,
-      client_phone: validation.data.client_phone,
+      client_phone: validation.data.client_phone || '',
       appointment_date: validation.data.appointment_date,
       total_amount: service.price,
       notes: validation.data.notes || null,
@@ -95,4 +95,24 @@ export async function updateAppointmentStatus(id: string, status: 'confirmed' | 
   revalidatePath('/appointments')
   revalidatePath('/dashboard')
   return { success: 'Status atualizado com sucesso!' }
+}
+
+export async function updateAppointmentDate(id: string, newDate: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Usuário não autenticado.' }
+
+  const { error } = await supabase
+    .from('appointments')
+    .update({ appointment_date: newDate })
+    .eq('id', id)
+
+  if (error) {
+    console.error('Error updating appointment date:', error)
+    return { error: 'Erro ao atualizar data.' }
+  }
+
+  revalidatePath('/appointments')
+  revalidatePath('/dashboard')
+  return { success: 'Data atualizada com sucesso!' }
 }

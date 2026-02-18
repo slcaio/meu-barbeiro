@@ -132,12 +132,50 @@ export interface Database {
           }
         ]
       }
+      clients: {
+        Row: {
+          id: string
+          barbershop_id: string
+          name: string
+          phone: string | null
+          email: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          barbershop_id: string
+          name: string
+          phone?: string | null
+          email?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          barbershop_id?: string
+          name?: string
+          phone?: string | null
+          email?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_barbershop_id_fkey"
+            columns: ["barbershop_id"]
+            referencedRelation: "barbershops"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       appointments: {
         Row: {
           id: string
           barbershop_id: string
           service_id: string
           user_id: string
+          client_id: string | null
           client_name: string
           client_phone: string
           appointment_date: string
@@ -153,6 +191,7 @@ export interface Database {
           barbershop_id: string
           service_id: string
           user_id: string
+          client_id?: string | null
           client_name: string
           client_phone: string
           appointment_date: string
@@ -168,6 +207,7 @@ export interface Database {
           barbershop_id?: string
           service_id?: string
           user_id?: string
+          client_id?: string | null
           client_name?: string
           client_phone?: string
           appointment_date?: string
@@ -179,6 +219,12 @@ export interface Database {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "appointments_client_id_fkey"
+            columns: ["client_id"]
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "appointments_barbershop_id_fkey"
             columns: ["barbershop_id"]

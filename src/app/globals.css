@@ -75,3 +75,35 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* React Big Calendar Overrides */
+.rbc-calendar { font-family: inherit; }
+.rbc-toolbar { display: none !important; } /* Hide default toolbar since we use custom one */
+.rbc-header { 
+  padding: 12px 8px; 
+  font-weight: 600; 
+  font-size: 0.875rem; 
+  border-bottom: 1px solid #e5e7eb; 
+  white-space: nowrap; 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
+  height: 40px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+}
+.rbc-time-view { 
+  border: 1px solid #e5e7eb; 
+  border-radius: 0.5rem; 
+  overflow: hidden; 
+  flex: 1; 
+  min-height: 0; 
+}
+.rbc-time-content { border-top: 1px solid #e5e7eb; }
+.rbc-timeslot-group { border-bottom: 1px solid #f3f4f6; }
+.rbc-day-slot .rbc-time-slot { border-top: 1px solid #f3f4f6; }
+.rbc-current-time-indicator { background-color: #ef4444; height: 2px; }
+.rbc-event { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+.rbc-today { background-color: #f9fafb; }
+.rbc-allday-cell { display: none !important; }
+.rbc-timeslot-group { min-height: 120px !important; }
