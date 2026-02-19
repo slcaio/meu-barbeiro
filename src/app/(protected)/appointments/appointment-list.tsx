@@ -3,14 +3,25 @@
 import { Button } from '@/components/ui/button'
 import { updateAppointmentStatus } from '@/app/appointments/actions'
 import { Check, X, Clock } from 'lucide-react'
-import { useTransition } from 'react'
+import { useTransition, useState } from 'react'
+import { AppointmentPOSDialog } from './appointment-pos-dialog'
 
 export function AppointmentList({ appointments }: { appointments: any[] }) {
   const [isPending, startTransition] = useTransition()
+  const [posOpen, setPosOpen] = useState(false)
+  const [selectedAppointment, setSelectedAppointment] = useState<any>(null)
+  const [posAction, setPosAction] = useState<'complete' | 'cancel'>('complete')
 
-  const handleStatusUpdate = (id: string, status: 'confirmed' | 'completed' | 'cancelled') => {
+  const handleStatusUpdate = (apt: any, status: 'confirmed' | 'completed' | 'cancelled') => {
+    if (status === 'completed' || status === 'cancelled') {
+      setSelectedAppointment(apt)
+      setPosAction(status === 'completed' ? 'complete' : 'cancel')
+      setPosOpen(true)
+      return
+    }
+
     startTransition(async () => {
-      await updateAppointmentStatus(id, status)
+      await updateAppointmentStatus(apt.id, status)
     })
   }
 
@@ -52,7 +63,7 @@ export function AppointmentList({ appointments }: { appointments: any[] }) {
                   size="sm" 
                   variant="outline" 
                   className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                  onClick={() => handleStatusUpdate(apt.id, 'confirmed')}
+                  onClick={() => handleStatusUpdate(apt, 'confirmed')}
                   disabled={isPending}
                 >
                   <Check className="h-4 w-4 mr-1" /> Confirmar
@@ -61,7 +72,7 @@ export function AppointmentList({ appointments }: { appointments: any[] }) {
                   size="sm" 
                   variant="outline" 
                   className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  onClick={() => handleStatusUpdate(apt.id, 'cancelled')}
+                  onClick={() => handleStatusUpdate(apt, 'cancelled')}
                   disabled={isPending}
                 >
                   <X className="h-4 w-4 mr-1" /> Cancelar
@@ -73,7 +84,7 @@ export function AppointmentList({ appointments }: { appointments: any[] }) {
                 size="sm" 
                 variant="outline" 
                 className="text-gray-600 hover:text-gray-700 hover:bg-gray-50"
-                onClick={() => handleStatusUpdate(apt.id, 'completed')}
+                onClick={() => handleStatusUpdate(apt, 'completed')}
                 disabled={isPending}
               >
                 <Clock className="h-4 w-4 mr-1" /> Concluir
@@ -82,6 +93,12 @@ export function AppointmentList({ appointments }: { appointments: any[] }) {
           </div>
         </div>
       ))}
+      <AppointmentPOSDialog 
+        appointment={selectedAppointment}
+        isOpen={posOpen}
+        onOpenChange={setPosOpen}
+        action={posAction}
+      />
     </div>
   )
 }

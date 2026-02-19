@@ -10,6 +10,7 @@ interface Transaction {
   type: 'income' | 'expense'
   amount: number
   description: string
+  category: string
   date: string
   source: 'appointment' | 'manual'
 }
@@ -41,10 +42,16 @@ export function TransactionList({ transactions }: { transactions: Transaction[] 
             )}
             <div>
               <p className="font-medium">{t.description}</p>
-              <p className="text-sm text-muted-foreground">
-                {new Date(t.date).toLocaleDateString('pt-BR')}
-                {t.source === 'appointment' && ' • Agendamento'}
-              </p>
+              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <span className="bg-secondary px-1.5 py-0.5 rounded text-xs font-medium">
+                  {t.category}
+                </span>
+                <span>•</span>
+                <span>
+                  {new Date(t.date).toLocaleDateString('pt-BR')}
+                  {t.source === 'appointment' && ' (Agendamento)'}
+                </span>
+              </div>
             </div>
           </div>
           

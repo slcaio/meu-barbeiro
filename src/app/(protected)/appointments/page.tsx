@@ -19,7 +19,7 @@ async function getData() {
   // Get appointments
   const { data: appointments } = await supabase
     .from('appointments')
-    .select('*, services(name, duration_minutes)')
+    .select('*, services(name, duration_minutes, price)')
     .eq('barbershop_id', barbershop.id)
     .order('appointment_date', { ascending: true })
 

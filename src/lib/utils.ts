@@ -5,17 +5,39 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export const formatPhone = (value: string) => {
+export function formatPhone(value: string) {
   if (!value) return ""
   
-  // Remove all non-digit characters
+  // Remove non-numeric characters
   const numbers = value.replace(/\D/g, "")
   
-  // Limit to 11 digits
-  const truncated = numbers.slice(0, 11)
+  // Format as (XX) XXXXX-XXXX or (XX) XXXX-XXXX
+  if (numbers.length <= 10) {
+    return numbers.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3")
+  } else {
+    return numbers.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3")
+  }
+}
+
+export const formatCurrency = (value: string | number) => {
+  if (!value) return ''
   
-  if (truncated.length <= 2) return truncated
-  if (truncated.length <= 6) return `(${truncated.slice(0, 2)}) ${truncated.slice(2)}`
-  if (truncated.length <= 10) return `(${truncated.slice(0, 2)}) ${truncated.slice(2, 6)}-${truncated.slice(6)}`
-  return `(${truncated.slice(0, 2)}) ${truncated.slice(2, 7)}-${truncated.slice(7)}`
+  // Remove non-digits
+  const numericValue = value.toString().replace(/\D/g, '')
+  
+  // Convert to decimal (cents)
+  const floatValue = parseFloat(numericValue) / 100
+  
+  if (isNaN(floatValue)) return ''
+  
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(floatValue)
+}
+
+export const parseCurrency = (value: string) => {
+  if (!value) return 0
+  const digits = value.replace(/\D/g, '')
+  return parseFloat(digits) / 100
 }

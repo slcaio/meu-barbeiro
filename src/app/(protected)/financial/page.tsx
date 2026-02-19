@@ -4,8 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DollarSign, TrendingDown, TrendingUp } from 'lucide-react'
 import { AddTransactionDialog } from './add-transaction-dialog'
 import { TransactionList } from './transaction-list'
+import { FinancialFilters } from './financial-filters'
 
-async function getFinancialData() {
+type SearchParams = {
+  from?: string
+  to?: string
+  type?: string
+  category?: string
+  period?: string
+}
+
+async function getFinancialData(searchParams: SearchParams) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -18,23 +27,18 @@ async function getFinancialData() {
 
   if (!barbershop) redirect('/setup/wizard')
 
-  // Get current month range
+  // Date Filtering
   const date = new Date()
-  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1).toISOString()
-  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString()
+  let firstDay = new Date(date.getFullYear(), date.getMonth(), 1).toISOString()
+  let lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString()
 
-  // 1. Get Income from Paid Appointments
-  const { data: appointments } = await supabase
-    .from('appointments')
-    .select('id, total_amount, appointment_date, client_name, services(name)')
-    .eq('barbershop_id', barbershop.id)
-    .eq('payment_status', 'paid')
-    .gte('appointment_date', firstDay)
-    .lte('appointment_date', lastDay)
-    .order('appointment_date', { ascending: false })
+  if (searchParams.from && searchParams.to) {
+    firstDay = searchParams.from
+    lastDay = searchParams.to
+  }
 
-  // 2. Get Manual Transactions (Income/Expense)
-  const { data: transactions } = await supabase
+  // Base Query
+  let query = supabase
     .from('financial_records')
     .select('*')
     .eq('barbershop_id', barbershop.id)
@@ -42,10 +46,27 @@ async function getFinancialData() {
     .lte('record_date', lastDay)
     .order('record_date', { ascending: false })
 
-  // Calculate totals
-  const appointmentIncome = appointments?.reduce((sum, apt) => sum + apt.total_amount, 0) || 0
+  // Apply filters
+  if (searchParams.type && searchParams.type !== 'all') {
+    if (searchParams.type === 'income' || searchParams.type === 'expense') {
+      query = query.eq('type', searchParams.type)
+    }
+  }
+
+  if (searchParams.category && searchParams.category !== 'all') {
+    query = query.eq('category', searchParams.category)
+  }
+
+  // Execute Query
+  const { data: transactions } = await query
+
+  // Calculate totals (ALWAYS from the filtered set to reflect what user sees)
+  // OR: Should totals always reflect the PERIOD regardless of type/category filter?
+  // Usually, "Revenue Total" card implies TOTAL revenue for the period.
+  // But if I filter by "Expense", showing "Revenue Total" might be confusing or just 0.
+  // Let's make totals reflect the current filtered view for consistency.
   
-  const manualIncome = transactions
+  const totalIncome = transactions
     ?.filter(t => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0) || 0
 
@@ -53,29 +74,19 @@ async function getFinancialData() {
     ?.filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0) || 0
 
-  const totalIncome = appointmentIncome + manualIncome
   const netProfit = totalIncome - expenses
 
-  // Combine for list view
-  const allTransactions = [
-    ...(appointments?.map(apt => ({
-      id: apt.id,
-      type: 'income' as const,
-      amount: apt.total_amount,
-      description: `${apt.client_name} - ${apt.services?.name || 'Serviço'}`,
-      date: apt.appointment_date,
-      source: 'appointment' as const
-    })) || []),
-    ...(transactions?.map(t => ({
+  // List view
+  const allTransactions = transactions?.map(t => ({
       id: t.id,
       type: t.type,
       amount: t.amount,
       description: t.description || 'Sem descrição',
+      category: t.category || 'Outros',
       date: t.record_date,
       source: 'manual' as const
-    })) || [])
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-
+    })) || []
+    
   return {
     summary: {
       totalIncome,
@@ -86,8 +97,9 @@ async function getFinancialData() {
   }
 }
 
-export default async function FinancialPage() {
-  const { summary, transactions } = await getFinancialData()
+export default async function FinancialPage(props: { searchParams: Promise<SearchParams> }) {
+  const searchParams = await props.searchParams
+  const { summary, transactions } = await getFinancialData(searchParams)
 
   return (
     <div className="space-y-6">
@@ -95,11 +107,13 @@ export default async function FinancialPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Financeiro</h1>
           <p className="text-muted-foreground">
-            Resumo financeiro do mês atual.
+            Gerencie suas receitas e despesas.
           </p>
         </div>
         <AddTransactionDialog />
       </div>
+
+      <FinancialFilters />
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-3">

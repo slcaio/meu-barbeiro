@@ -7,6 +7,7 @@ import { z } from 'zod'
 const transactionSchema = z.object({
   type: z.enum(['income', 'expense']),
   amount: z.coerce.number().min(0.01, 'Valor deve ser positivo'),
+  category: z.string().min(1, 'Categoria é obrigatória'),
   description: z.string().optional(),
   record_date: z.string().date(), // YYYY-MM-DD
 })
@@ -19,6 +20,7 @@ export async function createTransaction(formData: FormData) {
   const rawData = {
     type: formData.get('type'),
     amount: formData.get('amount'),
+    category: formData.get('category'),
     description: formData.get('description'),
     record_date: formData.get('record_date'),
   }
@@ -43,6 +45,7 @@ export async function createTransaction(formData: FormData) {
       barbershop_id: barbershop.id,
       type: validation.data.type,
       amount: validation.data.amount,
+      category: validation.data.category,
       description: validation.data.description || null,
       record_date: validation.data.record_date,
     })

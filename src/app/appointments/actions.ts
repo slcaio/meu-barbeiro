@@ -143,3 +143,84 @@ export async function updateAppointmentDate(id: string, newDate: string) {
   revalidatePath('/dashboard')
   return { success: 'Data atualizada com sucesso!' }
 }
+
+export async function completeAppointmentWithTransaction(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Usuário não autenticado.' }
+
+  const appointmentId = formData.get('appointment_id') as string
+  const action = formData.get('action') as 'complete' | 'cancel'
+  const amount = Number(formData.get('amount'))
+  const description = formData.get('description') as string
+
+  if (!appointmentId || !action) {
+    return { error: 'Dados incompletos.' }
+  }
+
+  // Determine status
+  const status = action === 'complete' ? 'completed' : 'cancelled'
+  
+  const updateData: {
+    status: 'completed' | 'cancelled';
+    total_amount?: number;
+    payment_status?: 'paid' | 'pending' | 'refunded' | 'partial';
+  } = { status }
+  
+  if (action === 'complete') {
+    updateData.total_amount = amount
+    updateData.payment_status = 'paid'
+  } else if (action === 'cancel') {
+     if (amount > 0) {
+        updateData.total_amount = amount // Cancellation fee
+        updateData.payment_status = 'paid' 
+     } else {
+        // If cancelled without fee, maybe set payment_status to 'refunded' or keep as is?
+        // 'refunded' implies money returned. 'void' isn't an option.
+        // Let's just set status to cancelled. payment_status can stay pending or whatever.
+     }
+  }
+
+  const { error: updateError } = await supabase
+    .from('appointments')
+    .update(updateData)
+    .eq('id', appointmentId)
+
+  if (updateError) {
+    console.error('Error updating appointment:', updateError)
+    return { error: 'Erro ao atualizar agendamento.' }
+  }
+
+  // Create financial record if amount > 0
+  if (amount > 0) {
+      const { data: barbershop } = await supabase
+        .from('barbershops')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
+
+      if (!barbershop) return { error: 'Barbearia não encontrada.' }
+
+      const { error: transactionError } = await supabase
+        .from('financial_records')
+        .insert({
+          barbershop_id: barbershop.id,
+          type: 'income',
+          amount: amount,
+          category: action === 'complete' ? 'Serviço' : 'Outros',
+          description: description,
+          record_date: new Date().toISOString().split('T')[0],
+        })
+
+      if (transactionError) {
+        console.error('Error creating transaction:', transactionError)
+        return { error: 'Agendamento atualizado, mas erro ao criar transação financeira.' }
+      }
+  }
+
+  revalidatePath('/appointments')
+  revalidatePath('/dashboard')
+  revalidatePath('/financial')
+  
+  return { success: 'Operação realizada com sucesso!' }
+}

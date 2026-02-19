@@ -3,10 +3,10 @@
 import { useState, useTransition } from 'react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
-import { updateAppointmentStatus } from '@/app/appointments/actions'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Check, X, User, Phone, Scissors, Calendar, FileText, Info } from 'lucide-react'
+import { AppointmentPOSDialog } from './appointment-pos-dialog'
 
 interface AppointmentDetailsDialogProps {
   appointment: any
@@ -19,20 +19,15 @@ export function AppointmentDetailsDialog({
   isOpen,
   onOpenChange,
 }: AppointmentDetailsDialogProps) {
-  const [isPending, startTransition] = useTransition()
+  const [posOpen, setPosOpen] = useState(false)
+  const [posAction, setPosAction] = useState<'complete' | 'cancel'>('complete')
 
   if (!appointment) return null
 
   const handleStatusChange = (status: 'completed' | 'cancelled') => {
-    startTransition(async () => {
-      const result = await updateAppointmentStatus(appointment.id, status)
-      if (result.error) {
-        // You might want to show a toast here
-        alert(result.error)
-      } else {
-        onOpenChange(false)
-      }
-    })
+    setPosAction(status === 'completed' ? 'complete' : 'cancel')
+    setPosOpen(true)
+    onOpenChange(false)
   }
 
   const statusLabels: Record<string, string> = {
@@ -50,7 +45,8 @@ export function AppointmentDetailsDialog({
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={() => onOpenChange(false)} title="Detalhes do Agendamento">
+    <>
+      <Modal isOpen={isOpen} onClose={() => onOpenChange(false)} title="Detalhes do Agendamento">
         <div className="space-y-6">
           
           {/* Client Info Section */}
@@ -123,7 +119,7 @@ export function AppointmentDetailsDialog({
               variant="outline"
               className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
               onClick={() => handleStatusChange('cancelled')}
-              disabled={isPending || appointment.status === 'cancelled'}
+              disabled={appointment.status === 'cancelled'}
             >
               <X className="mr-2 h-4 w-4" />
               Cancelar
@@ -131,13 +127,21 @@ export function AppointmentDetailsDialog({
             <Button
               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
               onClick={() => handleStatusChange('completed')}
-              disabled={isPending || appointment.status === 'completed'}
+              disabled={appointment.status === 'completed'}
             >
               <Check className="mr-2 h-4 w-4" />
               Concluir
             </Button>
           </div>
         </div>
-    </Modal>
+      </Modal>
+
+      <AppointmentPOSDialog
+        appointment={appointment}
+        isOpen={posOpen}
+        onOpenChange={setPosOpen}
+        action={posAction}
+      />
+    </>
   )
 }

@@ -45,7 +45,7 @@ async function getDashboardData() {
   // Recent appointments
   const { data: recentAppointments } = await supabase
     .from('appointments')
-    .select('*, services(name)')
+    .select('*, services(name, price)')
     .eq('barbershop_id', barbershop.id)
     .order('appointment_date', { ascending: true })
     .gte('appointment_date', new Date().toISOString())

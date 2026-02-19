@@ -252,6 +252,7 @@ export interface Database {
           type: 'income' | 'expense'
           amount: number
           description: string | null
+          category: string
           record_date: string
           created_at: string
         }
@@ -261,6 +262,7 @@ export interface Database {
           type: 'income' | 'expense'
           amount: number
           description?: string | null
+          category?: string
           record_date?: string
           created_at?: string
         }
@@ -270,6 +272,7 @@ export interface Database {
           type?: 'income' | 'expense'
           amount?: number
           description?: string | null
+          category?: string
           record_date?: string
           created_at?: string
         }
