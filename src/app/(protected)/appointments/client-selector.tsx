@@ -44,7 +44,7 @@ export function ClientSelector({ clients, onSelect, onNewClient }: ClientSelecto
   return (
     <div className="space-y-2 relative" ref={wrapperRef}>
       <Label>Buscar Cliente</Label>
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input 
@@ -70,8 +70,9 @@ export function ClientSelector({ clients, onSelect, onNewClient }: ClientSelecto
             </button>
           )}
         </div>
-        <Button type="button" variant="outline" onClick={onNewClient} title="Novo Cliente">
-          <Plus className="h-4 w-4" />
+        <Button type="button" className="h-10 bg-blue-600 hover:bg-blue-700 text-white" onClick={onNewClient}>
+          <Plus className="mr-2 h-4 w-4" />
+          Adicionar
         </Button>
       </div>
 
