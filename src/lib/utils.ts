@@ -8,14 +8,18 @@ export function cn(...inputs: ClassValue[]) {
 export function formatPhone(value: string) {
   if (!value) return ""
   
-  // Remove non-numeric characters
-  const numbers = value.replace(/\D/g, "")
+  // Remove non-numeric characters and limit to 11 digits
+  let numbers = value.replace(/\D/g, "").slice(0, 11)
   
-  // Format as (XX) XXXXX-XXXX or (XX) XXXX-XXXX
-  if (numbers.length <= 10) {
-    return numbers.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3")
+  // Format based on length
+  if (numbers.length <= 2) {
+    return numbers.length > 0 ? `(${numbers}` : numbers
+  } else if (numbers.length <= 6) {
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`
+  } else if (numbers.length <= 10) {
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 6)}-${numbers.slice(6)}`
   } else {
-    return numbers.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3")
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`
   }
 }
 

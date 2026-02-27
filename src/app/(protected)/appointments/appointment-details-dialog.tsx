@@ -7,6 +7,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Check, X, User, Phone, Scissors, Calendar, FileText, Info } from 'lucide-react'
 import { AppointmentPOSDialog } from './appointment-pos-dialog'
+import { formatPhone } from '@/lib/utils'
 
 interface AppointmentDetailsDialogProps {
   appointment: any
@@ -59,7 +60,7 @@ export function AppointmentDetailsDialog({
                   <h4 className="font-semibold text-gray-900">{appointment.client_name}</h4>
                   <div className="flex items-center text-sm text-gray-500 gap-1">
                      <Phone className="h-3 w-3" />
-                     <span>{appointment.client_phone || 'Sem telefone'}</span>
+                     <span>{appointment.client_phone ? formatPhone(appointment.client_phone) : 'Sem telefone'}</span>
                   </div>
                 </div>
              </div>

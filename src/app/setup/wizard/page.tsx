@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { useActionState, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { formatPhone } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 
 const initialState = {
@@ -58,21 +59,7 @@ export default function SetupWizardPage() {
   }
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, '')
-    if (value.length > 11) value = value.slice(0, 11)
-    
-    // Mask (00) 00000-0000
-    if (value.length > 2) {
-      value = value.replace(/^(\d{2})(\d)/g, '($1) $2')
-    }
-    if (value.length > 7) {
-      if (value.replace(/\D/g, '').length === 11) {
-        value = value.replace(/(\d{5})(\d{4})$/, '$1-$2')
-      } else {
-        value = value.replace(/(\d{4})(\d{4})$/, '$1-$2')
-      }
-    }
-    
+    const value = formatPhone(e.target.value)
     setFormData(prev => ({ ...prev, phone: value }))
   }
 

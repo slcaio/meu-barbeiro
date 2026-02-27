@@ -7,9 +7,11 @@ import { Plus } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createNewClient } from '@/app/clients/actions'
+import { formatPhone } from '@/lib/utils'
 
 export function CreateClientDialog() {
   const [isOpen, setIsOpen] = useState(false)
+  const [phone, setPhone] = useState('')
 
   const handleSubmit = async (formData: FormData) => {
     const result = await createNewClient(formData)
@@ -35,7 +37,13 @@ export function CreateClientDialog() {
           
           <div className="space-y-2">
             <Label htmlFor="phone">Celular</Label>
-            <Input id="phone" name="phone" placeholder="(00) 00000-0000" />
+            <Input 
+              id="phone" 
+              name="phone" 
+              placeholder="(00) 00000-0000" 
+              value={phone}
+              onChange={(e) => setPhone(formatPhone(e.target.value))}
+            />
           </div>
 
           <div className="space-y-2">

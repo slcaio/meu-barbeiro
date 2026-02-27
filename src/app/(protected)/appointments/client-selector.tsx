@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Plus, Search, X } from 'lucide-react'
 import { Label } from '@/components/ui/label'
+import { formatPhone } from '@/lib/utils'
 
 interface Client {
   id: string
@@ -94,7 +95,7 @@ export function ClientSelector({ clients, onSelect, onNewClient }: ClientSelecto
                 }}
               >
                 <span className="font-medium">{client.name}</span>
-                <span className="text-muted-foreground text-xs">{client.phone}</span>
+                <span className="text-muted-foreground text-xs">{client.phone ? formatPhone(client.phone) : ''}</span>
               </div>
             ))
           )}

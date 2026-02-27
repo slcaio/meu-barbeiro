@@ -6,6 +6,7 @@ import { Trash2, Search } from 'lucide-react'
 import { useTransition, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Database } from '@/types/database.types'
+import { formatPhone } from '@/lib/utils'
 
 type Client = Database['public']['Tables']['clients']['Row']
 
@@ -70,7 +71,7 @@ export function ClientList({ clients }: { clients: Client[] }) {
                         <span className="font-medium">{client.name}</span>
                     </div>
                   </td>
-                  <td className="p-4 align-middle">{client.phone || '-'}</td>
+                  <td className="p-4 align-middle">{client.phone ? formatPhone(client.phone) : '-'}</td>
                   <td className="p-4 align-middle">{client.email || '-'}</td>
                   <td className="p-4 align-middle text-right">
                     <Button
