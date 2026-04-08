@@ -5,6 +5,7 @@ import { DollarSign, TrendingDown, TrendingUp } from 'lucide-react'
 import { AddTransactionDialog } from './add-transaction-dialog'
 import { TransactionList } from './transaction-list'
 import { FinancialFilters } from './financial-filters'
+import { CommissionReportDialog } from './commission-report-dialog'
 
 type SearchParams = {
   from?: string
@@ -110,7 +111,10 @@ export default async function FinancialPage(props: { searchParams: Promise<Searc
             Gerencie suas receitas e despesas.
           </p>
         </div>
-        <AddTransactionDialog />
+        <div className="flex flex-wrap gap-2">
+          <CommissionReportDialog />
+          <AddTransactionDialog />
+        </div>
       </div>
 
       <FinancialFilters />

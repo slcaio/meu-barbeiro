@@ -42,9 +42,10 @@ interface AppointmentsCalendarViewProps {
   appointments: any[]
   services: any[]
   clients: any[]
+  barbers: any[]
 }
 
-export function AppointmentsCalendarView({ appointments, services, clients }: AppointmentsCalendarViewProps) {
+export function AppointmentsCalendarView({ appointments, services, clients, barbers }: AppointmentsCalendarViewProps) {
   console.log('Appointments received:', appointments)
   const [view, setView] = useState<View>(Views.DAY)
   const [date, setDate] = useState(new Date())
@@ -53,9 +54,14 @@ export function AppointmentsCalendarView({ appointments, services, clients }: Ap
   const [selectedEvent, setSelectedEvent] = useState<any>(null)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [isPending, startTransition] = useTransition()
+  const [filterBarberId, setFilterBarberId] = useState<string>('')
 
-  // Transform appointments to events
-  const events = appointments.map(apt => {
+  // Transform appointments to events (filtered by barber)
+  const filteredAppointments = filterBarberId
+    ? appointments.filter(apt => apt.barber_id === filterBarberId)
+    : appointments
+
+  const events = filteredAppointments.map(apt => {
     const start = new Date(apt.appointment_date)
     // Calculate end time based on service duration
     const duration = apt.services?.duration_minutes || 30
@@ -63,7 +69,7 @@ export function AppointmentsCalendarView({ appointments, services, clients }: Ap
     
     return {
       id: apt.id,
-      title: `${apt.client_name} - ${apt.services?.name}`,
+      title: `${apt.client_name} - ${apt.services?.name}${apt.barbers?.name ? ` (${apt.barbers.name})` : ''}`,
       start,
       end,
       resource: apt,
@@ -155,23 +161,38 @@ export function AppointmentsCalendarView({ appointments, services, clients }: Ap
           <div className="ml-4 truncate">{label()}</div>
         </div>
 
-        <div className="flex bg-gray-100 p-1 rounded-lg">
-          <button
-            onClick={() => toolbar.onView(Views.DAY)}
-            className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-              view === Views.DAY ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'
-            }`}
-          >
-            Dia
-          </button>
-          <button
-            onClick={() => toolbar.onView(Views.WEEK)}
-            className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-              view === Views.WEEK ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'
-            }`}
-          >
-            Semana
-          </button>
+        <div className="flex items-center gap-3">
+          {barbers.length > 0 && (
+            <select
+              value={filterBarberId}
+              onChange={(e) => setFilterBarberId(e.target.value)}
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="">Todos os barbeiros</option>
+              {barbers.map((barber: any) => (
+                <option key={barber.id} value={barber.id}>{barber.name}</option>
+              ))}
+            </select>
+          )}
+
+          <div className="flex bg-gray-100 p-1 rounded-lg">
+            <button
+              onClick={() => toolbar.onView(Views.DAY)}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                view === Views.DAY ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              Dia
+            </button>
+            <button
+              onClick={() => toolbar.onView(Views.WEEK)}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                view === Views.WEEK ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              Semana
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -196,7 +217,8 @@ export function AppointmentsCalendarView({ appointments, services, clients }: Ap
          <h2 className="text-xl font-bold hidden">Calendário</h2>
          <CreateAppointmentDialog 
             services={services} 
-            clients={clients} 
+            clients={clients}
+            barbers={barbers}
             isOpen={isDialogOpen}
             onOpenChange={handleOpenChange}
             initialDate={selectedDate}

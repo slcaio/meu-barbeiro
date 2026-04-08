@@ -169,6 +169,58 @@ export interface Database {
           }
         ]
       }
+      barbers: {
+        Row: {
+          id: string
+          barbershop_id: string
+          name: string
+          phone: string | null
+          email: string | null
+          role: string
+          avatar_url: string | null
+          commission_percentage: number
+          is_active: boolean
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          barbershop_id: string
+          name: string
+          phone?: string | null
+          email?: string | null
+          role?: string
+          avatar_url?: string | null
+          commission_percentage?: number
+          is_active?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          barbershop_id?: string
+          name?: string
+          phone?: string | null
+          email?: string | null
+          role?: string
+          avatar_url?: string | null
+          commission_percentage?: number
+          is_active?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "barbers_barbershop_id_fkey"
+            columns: ["barbershop_id"]
+            referencedRelation: "barbershops"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       appointments: {
         Row: {
           id: string
@@ -176,6 +228,7 @@ export interface Database {
           service_id: string
           user_id: string
           client_id: string | null
+          barber_id: string | null
           client_name: string
           client_phone: string
           appointment_date: string
@@ -192,6 +245,7 @@ export interface Database {
           service_id: string
           user_id: string
           client_id?: string | null
+          barber_id?: string | null
           client_name: string
           client_phone: string
           appointment_date: string
@@ -208,6 +262,7 @@ export interface Database {
           service_id?: string
           user_id?: string
           client_id?: string | null
+          barber_id?: string | null
           client_name?: string
           client_phone?: string
           appointment_date?: string
@@ -241,6 +296,12 @@ export interface Database {
             foreignKeyName: "appointments_user_id_fkey"
             columns: ["user_id"]
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_barber_id_fkey"
+            columns: ["barber_id"]
+            referencedRelation: "barbers"
             referencedColumns: ["id"]
           }
         ]

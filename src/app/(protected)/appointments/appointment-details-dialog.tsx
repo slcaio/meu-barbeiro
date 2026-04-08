@@ -75,6 +75,9 @@ export function AppointmentDetailsDialog({
                 <div>
                    <span className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Serviço</span>
                    <span className="text-gray-900 font-medium">{appointment.services?.name}</span>
+                   {appointment.barbers?.name && (
+                     <span className="text-sm text-gray-500 ml-1">• {appointment.barbers.name}</span>
+                   )}
                 </div>
              </div>
 

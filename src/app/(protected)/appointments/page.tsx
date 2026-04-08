@@ -16,10 +16,10 @@ async function getData() {
 
   if (!barbershop) redirect('/setup/wizard')
 
-  // Get appointments
+  // Get appointments with barber join
   const { data: appointments } = await supabase
     .from('appointments')
-    .select('*, services(name, duration_minutes, price)')
+    .select('*, services(name, duration_minutes, price), barbers(id, name)')
     .eq('barbershop_id', barbershop.id)
     .order('appointment_date', { ascending: true })
 
@@ -37,15 +37,24 @@ async function getData() {
     .eq('barbershop_id', barbershop.id)
     .order('name')
 
+  // Get active barbers for dropdown
+  const { data: barbers } = await supabase
+    .from('barbers')
+    .select('id, name, is_active')
+    .eq('barbershop_id', barbershop.id)
+    .eq('is_active', true)
+    .order('name')
+
   return { 
     appointments: appointments || [], 
     services: services || [], 
-    clients: clients || [] 
+    clients: clients || [],
+    barbers: barbers || [],
   }
 }
 
 export default async function AppointmentsPage() {
-  const { appointments, services, clients } = await getData()
+  const { appointments, services, clients, barbers } = await getData()
 
   return (
     <div className="space-y-6 h-full">
@@ -61,7 +70,8 @@ export default async function AppointmentsPage() {
       <AppointmentsCalendarView 
         appointments={appointments} 
         services={services} 
-        clients={clients} 
+        clients={clients}
+        barbers={barbers}
       />
     </div>
   )

@@ -15,7 +15,7 @@ export function AddTransactionDialog() {
   const [amount, setAmount] = useState('')
 
   const INCOME_CATEGORIES = ['Serviço', 'Produto', 'Outros']
-  const EXPENSE_CATEGORIES = ['Aluguel', 'Contas (Água/Luz/Internet)', 'Impostos', 'Produtos', 'Salário', 'Manutenção', 'Marketing', 'Outros']
+  const EXPENSE_CATEGORIES = ['Aluguel', 'Contas (Água/Luz/Internet)', 'Impostos', 'Produtos', 'Salário', 'Manutenção', 'Marketing', 'Comissão', 'Outros']
 
   const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
 

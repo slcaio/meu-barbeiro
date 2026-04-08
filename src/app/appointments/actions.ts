@@ -10,6 +10,7 @@ const appointmentSchema = z.object({
   client_id: z.string().nullish(),
   is_new_client: z.string().nullish(),
   service_id: z.string().uuid('Serviço inválido'),
+  barber_id: z.string().uuid().optional().or(z.literal('')),
   appointment_date: z.string().datetime(), // ISO string from frontend
   notes: z.string().nullish(),
 })
@@ -25,6 +26,7 @@ export async function createAppointment(formData: FormData) {
     client_id: formData.get('client_id'),
     is_new_client: formData.get('is_new_client'),
     service_id: formData.get('service_id'),
+    barber_id: formData.get('barber_id'),
     appointment_date: formData.get('appointment_date'), // Expecting ISO string or similar
     notes: formData.get('notes'),
   }
@@ -85,6 +87,7 @@ export async function createAppointment(formData: FormData) {
       service_id: validation.data.service_id,
       user_id: user.id,
       client_id: finalClientId || null,
+      barber_id: validation.data.barber_id || null,
       client_name: validation.data.client_name,
       client_phone: validation.data.client_phone || '',
       appointment_date: validation.data.appointment_date,
@@ -215,6 +218,36 @@ export async function completeAppointmentWithTransaction(formData: FormData) {
       if (transactionError) {
         console.error('Error creating transaction:', transactionError)
         return { error: 'Agendamento atualizado, mas erro ao criar transação financeira.' }
+      }
+
+      // Register barber commission if applicable
+      if (action === 'complete') {
+        const { data: appointment } = await supabase
+          .from('appointments')
+          .select('barber_id')
+          .eq('id', appointmentId)
+          .single()
+
+        if (appointment?.barber_id) {
+          const { data: barber } = await supabase
+            .from('barbers')
+            .select('commission_percentage, name')
+            .eq('id', appointment.barber_id)
+            .single()
+
+          if (barber && barber.commission_percentage > 0) {
+            const commissionAmount = amount * (barber.commission_percentage / 100)
+
+            await supabase.from('financial_records').insert({
+              barbershop_id: barbershop.id,
+              type: 'expense',
+              amount: commissionAmount,
+              category: 'Comissão',
+              description: `Comissão ${barber.name} - ${barber.commission_percentage}%`,
+              record_date: new Date().toISOString().split('T')[0],
+            })
+          }
+        }
       }
   }
 

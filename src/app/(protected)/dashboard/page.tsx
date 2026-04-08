@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Calendar, DollarSign, Users, Clock } from 'lucide-react'
+import { Calendar, DollarSign, Users, Clock, Scissors } from 'lucide-react'
 
 async function getDashboardData() {
   const supabase = await createClient()
@@ -45,18 +45,25 @@ async function getDashboardData() {
   // Recent appointments
   const { data: recentAppointments } = await supabase
     .from('appointments')
-    .select('*, services(name, price)')
+    .select('*, services(name, price), barbers(name)')
     .eq('barbershop_id', barbershop.id)
     .order('appointment_date', { ascending: true })
     .gte('appointment_date', new Date().toISOString())
     .limit(5)
+
+  // Active barbers count
+  const { count: activeBarbers } = await supabase
+    .from('barbers')
+    .select('*', { count: 'exact', head: true })
+    .eq('barbershop_id', barbershop.id)
+    .eq('is_active', true)
 
   return {
     barbershop,
     stats: {
       appointmentsToday: appointmentsToday || 0,
       revenue,
-      activeServices: 0, // Placeholder
+      activeBarbers: activeBarbers || 0,
     },
     recentAppointments: recentAppointments || []
   }
@@ -105,13 +112,13 @@ export default async function DashboardPage() {
         {/* Placeholders for other stats */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Clientes Ativos</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Barbeiros Ativos</CardTitle>
+            <Scissors className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">--</div>
+            <div className="text-2xl font-bold">{stats.activeBarbers}</div>
             <p className="text-xs text-muted-foreground">
-              +0% em relação ao mês passado
+              Na equipe
             </p>
           </CardContent>
         </Card>
@@ -146,7 +153,7 @@ export default async function DashboardPage() {
                       <p className="text-sm font-medium leading-none">{apt.client_name}</p>
                       <p className="text-sm text-muted-foreground">
                         {/* @ts-ignore - Supabase types join issue, verify later */}
-                        {apt.services?.name} • {new Date(apt.appointment_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        {apt.services?.name}{apt.barbers?.name ? ` • ${apt.barbers.name}` : ''} • {new Date(apt.appointment_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                     <div className="flex items-center">
