@@ -186,5 +186,207 @@ describe('Appointments Actions', () => {
       const result = await completeAppointmentWithTransaction(formData)
       expect(result).toEqual({ error: 'Dados incompletos.' })
     })
+
+    it('completa agendamento com método de pagamento e registra taxa percentual', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: { id: 'user-123' } },
+      })
+
+      const updateChain: any = {
+        update: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }
+      const barbershopChain = mockChain({ id: 'barbershop-1' })
+      const insertChain: any = {
+        insert: vi.fn().mockResolvedValue({ error: null }),
+      }
+      const paymentMethodChain = mockChain({ name: 'Cartão de Crédito', fee_type: 'percentage', fee_value: 3 })
+      const appointmentChain = mockChain({ barber_id: null })
+
+      let fromCallCount = 0
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'appointments') {
+          fromCallCount++
+          // First call: update, second call: select barber_id
+          if (fromCallCount === 1) return updateChain
+          return appointmentChain
+        }
+        if (table === 'barbershops') return barbershopChain
+        if (table === 'financial_records') return insertChain
+        if (table === 'payment_methods') return paymentMethodChain
+        return mockChain()
+      })
+
+      const { completeAppointmentWithTransaction } = await import('./actions')
+      const formData = createFormData({
+        appointment_id: 'apt-1',
+        action: 'complete',
+        amount: '100',
+        description: 'Serviço: Corte - Cliente: João',
+        payment_method_id: 'pm-credit',
+      })
+      const result = await completeAppointmentWithTransaction(formData)
+      expect(result).toEqual({ success: 'Operação realizada com sucesso!' })
+
+      // Verify financial_records insert was called (income + fee expense)
+      expect(insertChain.insert).toHaveBeenCalledTimes(2)
+    })
+
+    it('completa agendamento com método sem taxa (Dinheiro)', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: { id: 'user-123' } },
+      })
+
+      const updateChain: any = {
+        update: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }
+      const barbershopChain = mockChain({ id: 'barbershop-1' })
+      const insertChain: any = {
+        insert: vi.fn().mockResolvedValue({ error: null }),
+      }
+      const paymentMethodChain = mockChain({ name: 'Dinheiro', fee_type: 'percentage', fee_value: 0 })
+      const appointmentChain = mockChain({ barber_id: null })
+
+      let fromCallCount = 0
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'appointments') {
+          fromCallCount++
+          if (fromCallCount === 1) return updateChain
+          return appointmentChain
+        }
+        if (table === 'barbershops') return barbershopChain
+        if (table === 'financial_records') return insertChain
+        if (table === 'payment_methods') return paymentMethodChain
+        return mockChain()
+      })
+
+      const { completeAppointmentWithTransaction } = await import('./actions')
+      const formData = createFormData({
+        appointment_id: 'apt-1',
+        action: 'complete',
+        amount: '50',
+        description: 'Serviço: Corte',
+        payment_method_id: 'pm-cash',
+      })
+      const result = await completeAppointmentWithTransaction(formData)
+      expect(result).toEqual({ success: 'Operação realizada com sucesso!' })
+
+      // Only income record, no fee expense (fee_value is 0)
+      expect(insertChain.insert).toHaveBeenCalledTimes(1)
+    })
+
+    it('completa agendamento com taxa fixa', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: { id: 'user-123' } },
+      })
+
+      const updateChain: any = {
+        update: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }
+      const barbershopChain = mockChain({ id: 'barbershop-1' })
+      const insertChain: any = {
+        insert: vi.fn().mockResolvedValue({ error: null }),
+      }
+      const paymentMethodChain = mockChain({ name: 'Taxa Fixa', fee_type: 'fixed', fee_value: 2.5 })
+      const appointmentChain = mockChain({ barber_id: null })
+
+      let fromCallCount = 0
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'appointments') {
+          fromCallCount++
+          if (fromCallCount === 1) return updateChain
+          return appointmentChain
+        }
+        if (table === 'barbershops') return barbershopChain
+        if (table === 'financial_records') return insertChain
+        if (table === 'payment_methods') return paymentMethodChain
+        return mockChain()
+      })
+
+      const { completeAppointmentWithTransaction } = await import('./actions')
+      const formData = createFormData({
+        appointment_id: 'apt-1',
+        action: 'complete',
+        amount: '50',
+        description: 'Serviço: Corte',
+        payment_method_id: 'pm-fixed',
+      })
+      const result = await completeAppointmentWithTransaction(formData)
+      expect(result).toEqual({ success: 'Operação realizada com sucesso!' })
+
+      // Income + fee expense
+      expect(insertChain.insert).toHaveBeenCalledTimes(2)
+    })
+
+    it('cancela agendamento sem exigir método de pagamento', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: { id: 'user-123' } },
+      })
+
+      const updateChain: any = {
+        update: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }
+
+      mockFrom.mockReturnValue(updateChain)
+
+      const { completeAppointmentWithTransaction } = await import('./actions')
+      const formData = createFormData({
+        appointment_id: 'apt-1',
+        action: 'cancel',
+        amount: '0',
+        description: 'Cancelamento sem taxa',
+      })
+      const result = await completeAppointmentWithTransaction(formData)
+      expect(result).toEqual({ success: 'Operação realizada com sucesso!' })
+    })
+
+    it('completa agendamento com taxa e comissão de barbeiro', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: { id: 'user-123' } },
+      })
+
+      const updateChain: any = {
+        update: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }
+      const barbershopChain = mockChain({ id: 'barbershop-1' })
+      const insertChain: any = {
+        insert: vi.fn().mockResolvedValue({ error: null }),
+      }
+      const paymentMethodChain = mockChain({ name: 'Crédito', fee_type: 'percentage', fee_value: 3 })
+      const appointmentChain = mockChain({ barber_id: 'barber-1' })
+      const barberChain = mockChain({ commission_percentage: 30, name: 'Carlos' })
+
+      let fromCallCount = 0
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'appointments') {
+          fromCallCount++
+          if (fromCallCount === 1) return updateChain
+          return appointmentChain
+        }
+        if (table === 'barbershops') return barbershopChain
+        if (table === 'financial_records') return insertChain
+        if (table === 'payment_methods') return paymentMethodChain
+        if (table === 'barbers') return barberChain
+        return mockChain()
+      })
+
+      const { completeAppointmentWithTransaction } = await import('./actions')
+      const formData = createFormData({
+        appointment_id: 'apt-1',
+        action: 'complete',
+        amount: '100',
+        description: 'Serviço: Corte',
+        payment_method_id: 'pm-credit',
+      })
+      const result = await completeAppointmentWithTransaction(formData)
+      expect(result).toEqual({ success: 'Operação realizada com sucesso!' })
+
+      // Income + fee expense + commission expense = 3 inserts
+      expect(insertChain.insert).toHaveBeenCalledTimes(3)
+    })
   })
 })

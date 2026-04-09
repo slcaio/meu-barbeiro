@@ -14,20 +14,24 @@ interface AppointmentPOSDialogProps {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
   action: 'complete' | 'cancel'
+  paymentMethods: any[]
 }
 
 export function AppointmentPOSDialog({
   appointment,
   isOpen,
   onOpenChange,
-  action
+  action,
+  paymentMethods
 }: AppointmentPOSDialogProps) {
   const [amount, setAmount] = useState<string>('')
   const [description, setDescription] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<string>('')
 
   useEffect(() => {
     if (isOpen && appointment) {
+      setSelectedPaymentMethodId('')
       if (action === 'complete') {
         // Convert number to formatted string
         const price = appointment.services?.price || 0
@@ -56,6 +60,12 @@ export function AppointmentPOSDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (action === 'complete' && !selectedPaymentMethodId) {
+      alert('Selecione um método de pagamento.')
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
@@ -68,7 +78,10 @@ export function AppointmentPOSDialog({
       formData.append('amount', rawAmount.toString())
       
       formData.append('description', description)
-      formData.append('payment_method', 'money') // Default to money for now, could be expanded later
+
+      if (selectedPaymentMethodId) {
+        formData.append('payment_method_id', selectedPaymentMethodId)
+      }
       
       const result = await completeAppointmentWithTransaction(formData)
 
@@ -84,6 +97,19 @@ export function AppointmentPOSDialog({
       setIsSubmitting(false)
     }
   }
+
+  // Calculate fee for selected payment method
+  const selectedMethod = paymentMethods.find(pm => pm.id === selectedPaymentMethodId)
+  const rawAmount = parseCurrency(amount)
+  let feeAmount = 0
+  if (selectedMethod && rawAmount > 0) {
+    if (selectedMethod.fee_type === 'percentage') {
+      feeAmount = rawAmount * (selectedMethod.fee_value / 100)
+    } else {
+      feeAmount = selectedMethod.fee_value
+    }
+  }
+  const feeFormatted = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(feeAmount)
 
   const title = action === 'complete' ? 'Concluir Agendamento' : 'Cancelar Agendamento'
   const buttonText = action === 'complete' ? 'Concluir e Receber' : 'Confirmar Cancelamento'
@@ -127,6 +153,37 @@ export function AppointmentPOSDialog({
             required 
           />
         </div>
+
+        {action === 'complete' && (
+          <div className="space-y-2">
+            <Label htmlFor="payment_method">Método de Pagamento *</Label>
+            <select
+              id="payment_method"
+              value={selectedPaymentMethodId}
+              onChange={(e) => setSelectedPaymentMethodId(e.target.value)}
+              required
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <option value="">Selecione...</option>
+              {paymentMethods.map((pm: any) => (
+                <option key={pm.id} value={pm.id}>
+                  {pm.name}{pm.fee_value > 0 ? ` (${pm.fee_type === 'percentage' ? `${pm.fee_value}%` : `R$ ${pm.fee_value.toFixed(2)}`})` : ''}
+                </option>
+              ))}
+            </select>
+            {paymentMethods.length === 0 && (
+              <p className="text-xs text-amber-600">
+                Nenhum método de pagamento cadastrado. Cadastre em Configurações → Métodos de Pagamento.
+              </p>
+            )}
+          </div>
+        )}
+
+        {action === 'complete' && selectedMethod && feeAmount > 0 && (
+          <div className="bg-amber-50 border border-amber-200 p-3 rounded-md text-sm text-amber-800">
+            <p><strong>Taxa ({selectedMethod.name} {selectedMethod.fee_type === 'percentage' ? `${selectedMethod.fee_value}%` : `R$ ${selectedMethod.fee_value.toFixed(2)}`}):</strong> {feeFormatted}</p>
+          </div>
+        )}
 
         <div className="pt-4 flex justify-end space-x-2 border-t mt-4">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>

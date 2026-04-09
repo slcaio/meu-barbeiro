@@ -13,6 +13,7 @@ interface Transaction {
   category: string
   date: string
   source: 'appointment' | 'manual'
+  paymentMethodName: string | null
 }
 
 export function TransactionList({ transactions }: { transactions: Transaction[] }) {
@@ -46,6 +47,11 @@ export function TransactionList({ transactions }: { transactions: Transaction[] 
                 <span className="bg-secondary px-1.5 py-0.5 rounded text-xs font-medium">
                   {t.category}
                 </span>
+                {t.paymentMethodName && (
+                  <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded text-xs font-medium">
+                    {t.paymentMethodName}
+                  </span>
+                )}
                 <span>•</span>
                 <span>
                   {new Date(t.date).toLocaleDateString('pt-BR')}

@@ -45,16 +45,25 @@ async function getData() {
     .eq('is_active', true)
     .order('name')
 
+  // Get active payment methods for POS dialog
+  const { data: paymentMethods } = await supabase
+    .from('payment_methods')
+    .select('id, name, fee_type, fee_value')
+    .eq('barbershop_id', barbershop.id)
+    .eq('is_active', true)
+    .order('name')
+
   return { 
     appointments: appointments || [], 
     services: services || [], 
     clients: clients || [],
     barbers: barbers || [],
+    paymentMethods: paymentMethods || [],
   }
 }
 
 export default async function AppointmentsPage() {
-  const { appointments, services, clients, barbers } = await getData()
+  const { appointments, services, clients, barbers, paymentMethods } = await getData()
 
   return (
     <div className="space-y-6 h-full">
@@ -72,6 +81,7 @@ export default async function AppointmentsPage() {
         services={services} 
         clients={clients}
         barbers={barbers}
+        paymentMethods={paymentMethods}
       />
     </div>
   )

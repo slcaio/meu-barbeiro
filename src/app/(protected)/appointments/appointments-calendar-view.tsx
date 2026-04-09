@@ -43,9 +43,10 @@ interface AppointmentsCalendarViewProps {
   services: any[]
   clients: any[]
   barbers: any[]
+  paymentMethods: any[]
 }
 
-export function AppointmentsCalendarView({ appointments, services, clients, barbers }: AppointmentsCalendarViewProps) {
+export function AppointmentsCalendarView({ appointments, services, clients, barbers, paymentMethods }: AppointmentsCalendarViewProps) {
   console.log('Appointments received:', appointments)
   const [view, setView] = useState<View>(Views.DAY)
   const [date, setDate] = useState(new Date())
@@ -263,6 +264,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
           appointment={selectedEvent}
           isOpen={isDetailsOpen}
           onOpenChange={setIsDetailsOpen}
+          paymentMethods={paymentMethods}
         />
       </div>
     </div>

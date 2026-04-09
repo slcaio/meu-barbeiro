@@ -81,5 +81,19 @@ export async function createBarbershop(prevState: any, formData: FormData) {
     // Don't fail the whole process if service creation fails, just log it
   }
 
+  // Create default payment methods
+  const { error: paymentMethodsError } = await supabase
+    .from('payment_methods')
+    .insert([
+      { barbershop_id: barbershop.id, name: 'Dinheiro', fee_type: 'percentage', fee_value: 0 },
+      { barbershop_id: barbershop.id, name: 'Pix', fee_type: 'percentage', fee_value: 0 },
+      { barbershop_id: barbershop.id, name: 'Cartão de Crédito', fee_type: 'percentage', fee_value: 3 },
+      { barbershop_id: barbershop.id, name: 'Cartão de Débito', fee_type: 'percentage', fee_value: 1.5 },
+    ])
+
+  if (paymentMethodsError) {
+    console.error('Error creating default payment methods:', paymentMethodsError)
+  }
+
   redirect('/dashboard')
 }

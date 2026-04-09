@@ -156,6 +156,7 @@ export async function completeAppointmentWithTransaction(formData: FormData) {
   const action = formData.get('action') as 'complete' | 'cancel'
   const amount = Number(formData.get('amount'))
   const description = formData.get('description') as string
+  const paymentMethodId = formData.get('payment_method_id') as string | null
 
   if (!appointmentId || !action) {
     return { error: 'Dados incompletos.' }
@@ -168,19 +169,19 @@ export async function completeAppointmentWithTransaction(formData: FormData) {
     status: 'completed' | 'cancelled';
     total_amount?: number;
     payment_status?: 'paid' | 'pending' | 'refunded' | 'partial';
+    payment_method_id?: string | null;
   } = { status }
   
   if (action === 'complete') {
     updateData.total_amount = amount
     updateData.payment_status = 'paid'
+    if (paymentMethodId) {
+      updateData.payment_method_id = paymentMethodId
+    }
   } else if (action === 'cancel') {
      if (amount > 0) {
         updateData.total_amount = amount // Cancellation fee
         updateData.payment_status = 'paid' 
-     } else {
-        // If cancelled without fee, maybe set payment_status to 'refunded' or keep as is?
-        // 'refunded' implies money returned. 'void' isn't an option.
-        // Let's just set status to cancelled. payment_status can stay pending or whatever.
      }
   }
 
@@ -212,12 +213,38 @@ export async function completeAppointmentWithTransaction(formData: FormData) {
           amount: amount,
           category: action === 'complete' ? 'Serviço' : 'Outros',
           description: description,
+          payment_method_id: paymentMethodId || null,
           record_date: new Date().toISOString().split('T')[0],
         })
 
       if (transactionError) {
         console.error('Error creating transaction:', transactionError)
         return { error: 'Agendamento atualizado, mas erro ao criar transação financeira.' }
+      }
+
+      // Register payment method fee if applicable
+      if (action === 'complete' && paymentMethodId) {
+        const { data: paymentMethod } = await supabase
+          .from('payment_methods')
+          .select('name, fee_type, fee_value')
+          .eq('id', paymentMethodId)
+          .single()
+
+        if (paymentMethod && paymentMethod.fee_value > 0) {
+          const feeAmount = paymentMethod.fee_type === 'percentage'
+            ? amount * (paymentMethod.fee_value / 100)
+            : paymentMethod.fee_value
+
+          await supabase.from('financial_records').insert({
+            barbershop_id: barbershop.id,
+            type: 'expense',
+            amount: feeAmount,
+            category: 'Taxa de Pagamento',
+            description: `Taxa ${paymentMethod.name} - ${paymentMethod.fee_type === 'percentage' ? `${paymentMethod.fee_value}%` : `R$ ${paymentMethod.fee_value.toFixed(2)}`}`,
+            payment_method_id: paymentMethodId,
+            record_date: new Date().toISOString().split('T')[0],
+          })
+        }
       }
 
       // Register barber commission if applicable

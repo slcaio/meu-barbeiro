@@ -68,7 +68,7 @@ describe('Setup Actions', () => {
       expect(result).toEqual({ error: 'Usuário não autenticado.' })
     })
 
-    it('cria barbearia e redireciona', async () => {
+    it('cria barbearia com serviço e métodos de pagamento padrão e redireciona', async () => {
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: { id: 'user-123' } },
       })
@@ -85,9 +85,14 @@ describe('Setup Actions', () => {
         insert: vi.fn().mockResolvedValue({ error: null }),
       }
 
+      const paymentMethodsChain: any = {
+        insert: vi.fn().mockResolvedValue({ error: null }),
+      }
+
       mockFrom.mockImplementation((table: string) => {
         if (table === 'barbershops') return barbershopChain
         if (table === 'services') return serviceChain
+        if (table === 'payment_methods') return paymentMethodsChain
         return mockChain()
       })
 
@@ -102,6 +107,59 @@ describe('Setup Actions', () => {
         zip: '01001-000',
       })
 
+      await expect(createBarbershop(null, formData)).rejects.toThrow('NEXT_REDIRECT')
+      expect(mockRedirect).toHaveBeenCalledWith('/dashboard')
+
+      // Verifica que métodos de pagamento padrão foram inseridos
+      expect(paymentMethodsChain.insert).toHaveBeenCalledTimes(1)
+      const insertedMethods = paymentMethodsChain.insert.mock.calls[0][0]
+      expect(insertedMethods).toHaveLength(4)
+      expect(insertedMethods.map((m: any) => m.name)).toEqual([
+        'Dinheiro', 'Pix', 'Cartão de Crédito', 'Cartão de Débito',
+      ])
+      expect(insertedMethods.every((m: any) => m.barbershop_id === 'barbershop-1')).toBe(true)
+    })
+
+    it('redireciona mesmo quando métodos de pagamento falham', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: { id: 'user-123' } },
+      })
+
+      const barbershopData = { id: 'barbershop-1', name: 'Barbearia Teste' }
+      const barbershopChain = mockChain(barbershopData)
+      barbershopChain.insert = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: barbershopData, error: null }),
+        }),
+      })
+
+      const serviceChain: any = {
+        insert: vi.fn().mockResolvedValue({ error: null }),
+      }
+
+      const paymentMethodsChain: any = {
+        insert: vi.fn().mockResolvedValue({ error: { message: 'insert failed' } }),
+      }
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'barbershops') return barbershopChain
+        if (table === 'services') return serviceChain
+        if (table === 'payment_methods') return paymentMethodsChain
+        return mockChain()
+      })
+
+      const { createBarbershop } = await import('./actions')
+      const formData = createFormData({
+        name: 'Barbearia Teste',
+        phone: '11999999999',
+        street: 'Rua das Flores, 100',
+        number: '100',
+        city: 'São Paulo',
+        state: 'SP',
+        zip: '01001-000',
+      })
+
+      // Não deve falhar o processo todo se payment_methods falhar
       await expect(createBarbershop(null, formData)).rejects.toThrow('NEXT_REDIRECT')
       expect(mockRedirect).toHaveBeenCalledWith('/dashboard')
     })

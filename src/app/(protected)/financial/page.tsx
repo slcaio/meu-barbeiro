@@ -41,7 +41,7 @@ async function getFinancialData(searchParams: SearchParams) {
   // Base Query
   let query = supabase
     .from('financial_records')
-    .select('*')
+    .select('*, payment_methods(name)')
     .eq('barbershop_id', barbershop.id)
     .gte('record_date', firstDay)
     .lte('record_date', lastDay)
@@ -85,7 +85,8 @@ async function getFinancialData(searchParams: SearchParams) {
       description: t.description || 'Sem descrição',
       category: t.category || 'Outros',
       date: t.record_date,
-      source: 'manual' as const
+      source: 'manual' as const,
+      paymentMethodName: (t as any).payment_methods?.name || null,
     })) || []
     
   return {

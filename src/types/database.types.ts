@@ -229,6 +229,7 @@ export interface Database {
           user_id: string
           client_id: string | null
           barber_id: string | null
+          payment_method_id: string | null
           client_name: string
           client_phone: string
           appointment_date: string
@@ -246,6 +247,7 @@ export interface Database {
           user_id: string
           client_id?: string | null
           barber_id?: string | null
+          payment_method_id?: string | null
           client_name: string
           client_phone: string
           appointment_date: string
@@ -263,6 +265,7 @@ export interface Database {
           user_id?: string
           client_id?: string | null
           barber_id?: string | null
+          payment_method_id?: string | null
           client_name?: string
           client_phone?: string
           appointment_date?: string
@@ -303,6 +306,52 @@ export interface Database {
             columns: ["barber_id"]
             referencedRelation: "barbers"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      payment_methods: {
+        Row: {
+          id: string
+          barbershop_id: string
+          name: string
+          fee_type: 'percentage' | 'fixed'
+          fee_value: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          barbershop_id: string
+          name: string
+          fee_type?: 'percentage' | 'fixed'
+          fee_value?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          barbershop_id?: string
+          name?: string
+          fee_type?: 'percentage' | 'fixed'
+          fee_value?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_methods_barbershop_id_fkey"
+            columns: ["barbershop_id"]
+            referencedRelation: "barbershops"
+            referencedColumns: ["id"]
           }
         ]
       }
@@ -314,6 +363,7 @@ export interface Database {
           amount: number
           description: string | null
           category: string
+          payment_method_id: string | null
           record_date: string
           created_at: string
         }
@@ -324,6 +374,7 @@ export interface Database {
           amount: number
           description?: string | null
           category?: string
+          payment_method_id?: string | null
           record_date?: string
           created_at?: string
         }
@@ -334,6 +385,7 @@ export interface Database {
           amount?: number
           description?: string | null
           category?: string
+          payment_method_id?: string | null
           record_date?: string
           created_at?: string
         }
@@ -342,6 +394,12 @@ export interface Database {
             foreignKeyName: "financial_records_barbershop_id_fkey"
             columns: ["barbershop_id"]
             referencedRelation: "barbershops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_records_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            referencedRelation: "payment_methods"
             referencedColumns: ["id"]
           }
         ]

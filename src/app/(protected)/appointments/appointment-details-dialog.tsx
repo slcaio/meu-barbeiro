@@ -13,12 +13,14 @@ interface AppointmentDetailsDialogProps {
   appointment: any
   isOpen: boolean
   onOpenChange: (open: boolean) => void
+  paymentMethods: any[]
 }
 
 export function AppointmentDetailsDialog({
   appointment,
   isOpen,
   onOpenChange,
+  paymentMethods,
 }: AppointmentDetailsDialogProps) {
   const [posOpen, setPosOpen] = useState(false)
   const [posAction, setPosAction] = useState<'complete' | 'cancel'>('complete')
@@ -145,6 +147,7 @@ export function AppointmentDetailsDialog({
         isOpen={posOpen}
         onOpenChange={setPosOpen}
         action={posAction}
+        paymentMethods={paymentMethods}
       />
     </>
   )
