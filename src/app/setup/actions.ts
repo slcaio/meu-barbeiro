@@ -88,7 +88,7 @@ export async function createBarbershop(prevState: ActionState, formData: FormDat
     .insert([
       { barbershop_id: barbershop.id, name: 'Dinheiro', fee_type: 'percentage', fee_value: 0 },
       { barbershop_id: barbershop.id, name: 'Pix', fee_type: 'percentage', fee_value: 0 },
-      { barbershop_id: barbershop.id, name: 'Cartão de Crédito', fee_type: 'percentage', fee_value: 3 },
+      { barbershop_id: barbershop.id, name: 'Cartão de Crédito', fee_type: 'percentage', fee_value: 3, supports_installments: true },
       { barbershop_id: barbershop.id, name: 'Cartão de Débito', fee_type: 'percentage', fee_value: 1.5 },
     ])
 

@@ -200,7 +200,7 @@ describe('Appointments Actions', () => {
       const insertChain = {
         insert: vi.fn().mockResolvedValue({ error: null }),
       }
-      const paymentMethodChain = mockChain({ name: 'Cartão de Crédito', fee_type: 'percentage', fee_value: 3 })
+      const paymentMethodChain = mockChain({ name: 'Cartão de Crédito', fee_type: 'percentage', fee_value: 3, supports_installments: false })
       const appointmentChain = mockChain({ barber_id: null })
 
       let fromCallCount = 0
@@ -245,7 +245,7 @@ describe('Appointments Actions', () => {
       const insertChain = {
         insert: vi.fn().mockResolvedValue({ error: null }),
       }
-      const paymentMethodChain = mockChain({ name: 'Dinheiro', fee_type: 'percentage', fee_value: 0 })
+      const paymentMethodChain = mockChain({ name: 'Dinheiro', fee_type: 'percentage', fee_value: 0, supports_installments: false })
       const appointmentChain = mockChain({ barber_id: null })
 
       let fromCallCount = 0
@@ -289,7 +289,7 @@ describe('Appointments Actions', () => {
       const insertChain = {
         insert: vi.fn().mockResolvedValue({ error: null }),
       }
-      const paymentMethodChain = mockChain({ name: 'Taxa Fixa', fee_type: 'fixed', fee_value: 2.5 })
+      const paymentMethodChain = mockChain({ name: 'Taxa Fixa', fee_type: 'fixed', fee_value: 2.5, supports_installments: false })
       const appointmentChain = mockChain({ barber_id: null })
 
       let fromCallCount = 0
@@ -356,7 +356,7 @@ describe('Appointments Actions', () => {
       const insertChain = {
         insert: vi.fn().mockResolvedValue({ error: null }),
       }
-      const paymentMethodChain = mockChain({ name: 'Crédito', fee_type: 'percentage', fee_value: 3 })
+      const paymentMethodChain = mockChain({ name: 'Crédito', fee_type: 'percentage', fee_value: 3, supports_installments: false })
       const appointmentChain = mockChain({ barber_id: 'barber-1' })
       const barberChain = mockChain({ commission_percentage: 30, name: 'Carlos' })
 
@@ -387,6 +387,53 @@ describe('Appointments Actions', () => {
 
       // Income + fee expense + commission expense = 3 inserts
       expect(insertChain.insert).toHaveBeenCalledTimes(3)
+    })
+
+    it('completa agendamento com parcelamento e taxa por parcela', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: { id: 'user-123' } },
+      })
+
+      const updateChain = {
+        update: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }
+      const barbershopChain = mockChain({ id: 'barbershop-1' })
+      const insertChain = {
+        insert: vi.fn().mockResolvedValue({ error: null }),
+      }
+      const paymentMethodChain = mockChain({ name: 'Cartão de Crédito', fee_type: 'percentage', fee_value: 3, supports_installments: true })
+      const installmentTierChain = mockChain({ fee_percentage: 7 })
+      const appointmentChain = mockChain({ barber_id: null })
+
+      let fromCallCount = 0
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'appointments') {
+          fromCallCount++
+          if (fromCallCount === 1) return updateChain
+          return appointmentChain
+        }
+        if (table === 'barbershops') return barbershopChain
+        if (table === 'financial_records') return insertChain
+        if (table === 'payment_methods') return paymentMethodChain
+        if (table === 'payment_method_installments') return installmentTierChain
+        return mockChain()
+      })
+
+      const { completeAppointmentWithTransaction } = await import('./actions')
+      const formData = createFormData({
+        appointment_id: 'apt-1',
+        action: 'complete',
+        amount: '100',
+        description: 'Serviço: Corte - Cliente: João',
+        payment_method_id: 'pm-credit',
+        installments: '3',
+      })
+      const result = await completeAppointmentWithTransaction(formData)
+      expect(result).toEqual({ success: 'Operação realizada com sucesso!' })
+
+      // Income + fee expense (7% of 100 = R$7) = 2 inserts
+      expect(insertChain.insert).toHaveBeenCalledTimes(2)
     })
   })
 })

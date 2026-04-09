@@ -11,7 +11,7 @@ import { updateAppointmentDate } from '@/app/appointments/actions'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { AppointmentWithRelations, ServiceOption, ClientOption, BarberOption, PaymentMethodOption } from '@/types/database.types'
+import type { AppointmentWithRelations, ServiceOption, ClientOption, BarberOption, PaymentMethodWithInstallments } from '@/types/database.types'
 
 const locales = {
   'pt-BR': ptBR,
@@ -44,7 +44,7 @@ interface AppointmentsCalendarViewProps {
   services: ServiceOption[]
   clients: ClientOption[]
   barbers: BarberOption[]
-  paymentMethods: PaymentMethodOption[]
+  paymentMethods: PaymentMethodWithInstallments[]
 }
 
 export function AppointmentsCalendarView({ appointments, services, clients, barbers, paymentMethods }: AppointmentsCalendarViewProps) {

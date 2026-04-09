@@ -45,10 +45,10 @@ async function getData() {
     .eq('is_active', true)
     .order('name')
 
-  // Get active payment methods for POS dialog
+  // Get active payment methods for POS dialog (with installment tiers)
   const { data: paymentMethods } = await supabase
     .from('payment_methods')
-    .select('id, name, fee_type, fee_value')
+    .select('id, name, fee_type, fee_value, supports_installments, payment_method_installments(installment_number, fee_percentage)')
     .eq('barbershop_id', barbershop.id)
     .eq('is_active', true)
     .order('name')

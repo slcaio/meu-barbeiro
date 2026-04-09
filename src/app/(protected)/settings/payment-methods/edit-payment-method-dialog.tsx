@@ -7,12 +7,21 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { updatePaymentMethod } from '@/app/payment-methods/actions'
 
+const MAX_INSTALLMENTS = 12
+
+interface InstallmentTier {
+  installment_number: number
+  fee_percentage: number
+}
+
 interface PaymentMethod {
   id: string
   name: string
   fee_type: 'percentage' | 'fixed'
   fee_value: number
+  supports_installments: boolean
   is_active: boolean
+  payment_method_installments?: InstallmentTier[]
 }
 
 interface EditPaymentMethodDialogProps {
@@ -23,18 +32,45 @@ interface EditPaymentMethodDialogProps {
 
 export function EditPaymentMethodDialog({ paymentMethod, isOpen, onOpenChange }: EditPaymentMethodDialogProps) {
   const [isActive, setIsActive] = useState(true)
+  const [supportsInstallments, setSupportsInstallments] = useState(false)
+  const [installmentFees, setInstallmentFees] = useState<Record<number, string>>({})
 
   useEffect(() => {
     if (paymentMethod && isOpen) {
       setIsActive(paymentMethod.is_active)
+      setSupportsInstallments(paymentMethod.supports_installments)
+
+      // Pre-fill installment fees from existing data
+      const fees: Record<number, string> = {}
+      if (paymentMethod.payment_method_installments) {
+        for (const tier of paymentMethod.payment_method_installments) {
+          fees[tier.installment_number] = tier.fee_percentage.toString()
+        }
+      }
+      setInstallmentFees(fees)
     }
   }, [paymentMethod, isOpen])
 
   if (!paymentMethod) return null
 
+  const handleInstallmentFeeChange = (num: number, value: string) => {
+    setInstallmentFees((prev) => ({ ...prev, [num]: value }))
+  }
+
   const handleSubmit = async (formData: FormData) => {
     formData.set('id', paymentMethod.id)
     formData.set('is_active', isActive.toString())
+    formData.set('supports_installments', supportsInstallments.toString())
+
+    if (supportsInstallments) {
+      const installments = Object.entries(installmentFees)
+        .filter(([, val]) => val !== '' && Number(val) >= 0)
+        .map(([num, val]) => ({
+          installment_number: Number(num),
+          fee_percentage: Number(val),
+        }))
+      formData.set('installments_json', JSON.stringify(installments))
+    }
 
     const result = await updatePaymentMethod(formData)
     if (result?.success) {
@@ -67,7 +103,7 @@ export function EditPaymentMethodDialog({ paymentMethod, isOpen, onOpenChange }:
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="edit-fee_value">Valor da Taxa</Label>
+            <Label htmlFor="edit-fee_value">Taxa à Vista (1x)</Label>
             <Input
               id="edit-fee_value"
               name="fee_value"
@@ -79,6 +115,44 @@ export function EditPaymentMethodDialog({ paymentMethod, isOpen, onOpenChange }:
             />
           </div>
         </div>
+
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="edit-supports-installments"
+            checked={supportsInstallments}
+            onChange={(e) => setSupportsInstallments(e.target.checked)}
+            className="h-4 w-4 rounded border-input text-primary focus:ring-ring"
+          />
+          <Label htmlFor="edit-supports-installments" className="text-sm font-normal">
+            Aceita parcelamento (até 12x)
+          </Label>
+        </div>
+
+        {supportsInstallments && (
+          <div className="space-y-3 border rounded-md p-4 bg-muted/50">
+            <p className="text-sm font-medium">Taxas por parcela</p>
+            <p className="text-xs text-muted-foreground">
+              Informe a taxa percentual para cada número de parcelas. Deixe em branco as que não deseja oferecer.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {Array.from({ length: MAX_INSTALLMENTS - 1 }, (_, i) => i + 2).map((num) => (
+                <div key={num} className="flex items-center gap-2">
+                  <span className="text-sm font-medium w-8 shrink-0">{num}x</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="%"
+                    value={installmentFees[num] ?? ''}
+                    onChange={(e) => handleInstallmentFeeChange(num, e.target.value)}
+                    className="h-9"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center gap-2">
           <input

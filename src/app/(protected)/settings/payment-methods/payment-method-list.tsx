@@ -9,15 +9,22 @@ import { deletePaymentMethod } from '@/app/payment-methods/actions'
 import { CreatePaymentMethodDialog } from './create-payment-method-dialog'
 import { EditPaymentMethodDialog } from './edit-payment-method-dialog'
 
+interface InstallmentTier {
+  installment_number: number
+  fee_percentage: number
+}
+
 interface PaymentMethod {
   id: string
   barbershop_id: string
   name: string
   fee_type: 'percentage' | 'fixed'
   fee_value: number
+  supports_installments: boolean
   is_active: boolean
   created_at: string
   updated_at: string
+  payment_method_installments?: InstallmentTier[]
 }
 
 function formatFee(feeType: string, feeValue: number) {
@@ -44,6 +51,11 @@ export function PaymentMethodList({ paymentMethods }: { paymentMethods: PaymentM
       }
       setConfirmDeleteId(null)
     })
+  }
+
+  const getMaxInstallments = (pm: PaymentMethod) => {
+    if (!pm.supports_installments || !pm.payment_method_installments?.length) return 0
+    return Math.max(...pm.payment_method_installments.map(t => t.installment_number))
   }
 
   return (
@@ -74,80 +86,89 @@ export function PaymentMethodList({ paymentMethods }: { paymentMethods: PaymentM
             </p>
           ) : (
             <div className="space-y-4">
-              {filteredMethods.map((pm) => (
-                <div
-                  key={pm.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-4 last:border-0 last:pb-0 gap-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold shrink-0">
-                      {pm.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">{pm.name}</p>
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                          pm.fee_value > 0
-                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                            : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                        }`}>
-                          {formatFee(pm.fee_type, pm.fee_value)}
-                        </span>
-                        {!pm.is_active && (
-                          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-red-500/10 text-red-600 dark:text-red-400">
-                            Inativo
-                          </span>
-                        )}
+              {filteredMethods.map((pm) => {
+                const maxInst = getMaxInstallments(pm)
+                return (
+                  <div
+                    key={pm.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-4 last:border-0 last:pb-0 gap-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold shrink-0">
+                        {pm.name.charAt(0).toUpperCase()}
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {pm.fee_type === 'percentage' ? 'Taxa percentual' : 'Taxa fixa'}
-                      </p>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium">{pm.name}</p>
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                            pm.fee_value > 0
+                              ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                              : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                          }`}>
+                            {formatFee(pm.fee_type, pm.fee_value)}
+                          </span>
+                          {pm.supports_installments && (
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                              {maxInst > 0 ? `Até ${maxInst}x` : 'Parcelamento'}
+                            </span>
+                          )}
+                          {!pm.is_active && (
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-red-500/10 text-red-600 dark:text-red-400">
+                              Inativo
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {pm.fee_type === 'percentage' ? 'Taxa percentual' : 'Taxa fixa'}
+                          {pm.supports_installments && maxInst > 0 && ` • Até ${maxInst}x`}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {confirmDeleteId === pm.id ? (
+                        <>
+                          <span className="text-sm text-red-600">Confirmar exclusão?</span>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDelete(pm.id)}
+                            disabled={isPending}
+                          >
+                            Sim
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setConfirmDeleteId(null)}
+                            disabled={isPending}
+                          >
+                            Não
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setEditPaymentMethod(pm)}
+                          >
+                            <Pencil className="h-4 w-4 mr-1" /> Editar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                            onClick={() => setConfirmDeleteId(pm.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2">
-                    {confirmDeleteId === pm.id ? (
-                      <>
-                        <span className="text-sm text-red-600">Confirmar exclusão?</span>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleDelete(pm.id)}
-                          disabled={isPending}
-                        >
-                          Sim
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setConfirmDeleteId(null)}
-                          disabled={isPending}
-                        >
-                          Não
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setEditPaymentMethod(pm)}
-                        >
-                          <Pencil className="h-4 w-4 mr-1" /> Editar
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                          onClick={() => setConfirmDeleteId(pm.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </CardContent>

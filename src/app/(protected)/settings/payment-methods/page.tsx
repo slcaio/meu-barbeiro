@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { getPaymentMethods } from '@/app/payment-methods/actions'
 import { PaymentMethodList } from './payment-method-list'
 
 export default async function PaymentMethodsPage() {
@@ -16,7 +15,11 @@ export default async function PaymentMethodsPage() {
 
   if (!barbershop) redirect('/setup/wizard')
 
-  const paymentMethods = await getPaymentMethods()
+  const { data: paymentMethods } = await supabase
+    .from('payment_methods')
+    .select('*, payment_method_installments(installment_number, fee_percentage)')
+    .eq('barbershop_id', barbershop.id)
+    .order('name')
 
   return (
     <div className="space-y-6">
@@ -27,7 +30,7 @@ export default async function PaymentMethodsPage() {
         </p>
       </div>
 
-      <PaymentMethodList paymentMethods={paymentMethods} />
+      <PaymentMethodList paymentMethods={paymentMethods || []} />
     </div>
   )
 }

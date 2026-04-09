@@ -120,7 +120,9 @@ describe('Payment Methods Actions', () => {
       })
       const barbershopChain = mockChain({ id: 'barbershop-1' })
       const insertChain = {
-        insert: vi.fn().mockResolvedValue({ error: null }),
+        insert: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: { id: 'new-pm-1' }, error: null }),
       }
 
       mockFrom.mockImplementation((table: string) => {
@@ -144,7 +146,9 @@ describe('Payment Methods Actions', () => {
       })
       const barbershopChain = mockChain({ id: 'barbershop-1' })
       const insertChain = {
-        insert: vi.fn().mockResolvedValue({ error: null }),
+        insert: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: { id: 'new-pm-2' }, error: null }),
       }
 
       mockFrom.mockImplementation((table: string) => {
@@ -162,13 +166,55 @@ describe('Payment Methods Actions', () => {
       expect(result).toEqual({ success: 'Método de pagamento cadastrado com sucesso!' })
     })
 
+    it('cria método com parcelamento e taxas por parcela', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: { id: 'user-123' } },
+      })
+      const barbershopChain = mockChain({ id: 'barbershop-1' })
+      const insertChain = {
+        insert: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: { id: 'new-pm-3' }, error: null }),
+      }
+      const installmentsInsertChain = {
+        insert: vi.fn().mockResolvedValue({ error: null }),
+      }
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'barbershops') return barbershopChain
+        if (table === 'payment_method_installments') return installmentsInsertChain
+        return insertChain
+      })
+
+      const { createPaymentMethod } = await import('./actions')
+      const installments = JSON.stringify([
+        { installment_number: 2, fee_percentage: 4.5 },
+        { installment_number: 3, fee_percentage: 6.0 },
+      ])
+      const formData = createFormData({
+        name: 'Cartão Crédito Parcelas',
+        fee_type: 'percentage',
+        fee_value: '3',
+        supports_installments: 'true',
+        installments_json: installments,
+      })
+      const result = await createPaymentMethod(formData)
+      expect(result).toEqual({ success: 'Método de pagamento cadastrado com sucesso!' })
+      expect(installmentsInsertChain.insert).toHaveBeenCalledWith([
+        { payment_method_id: 'new-pm-3', installment_number: 2, fee_percentage: 4.5 },
+        { payment_method_id: 'new-pm-3', installment_number: 3, fee_percentage: 6.0 },
+      ])
+    })
+
     it('retorna erro ao falhar inserção no banco', async () => {
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: { id: 'user-123' } },
       })
       const barbershopChain = mockChain({ id: 'barbershop-1' })
       const insertChain = {
-        insert: vi.fn().mockResolvedValue({ error: { message: 'DB error' } }),
+        insert: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: null, error: { message: 'DB error' } }),
       }
 
       mockFrom.mockImplementation((table: string) => {
@@ -216,11 +262,19 @@ describe('Payment Methods Actions', () => {
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: { id: 'user-123' } },
       })
-      const chain = {
+      const updateChain = {
         update: vi.fn().mockReturnThis(),
         eq: vi.fn().mockResolvedValue({ error: null }),
       }
-      mockFrom.mockReturnValue(chain)
+      const deleteInstallmentsChain = {
+        delete: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'payment_method_installments') return deleteInstallmentsChain
+        return updateChain
+      })
 
       const { updatePaymentMethod } = await import('./actions')
       const formData = createFormData({
@@ -238,11 +292,19 @@ describe('Payment Methods Actions', () => {
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: { id: 'user-123' } },
       })
-      const chain = {
+      const updateChain = {
         update: vi.fn().mockReturnThis(),
         eq: vi.fn().mockResolvedValue({ error: null }),
       }
-      mockFrom.mockReturnValue(chain)
+      const deleteInstallmentsChain = {
+        delete: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'payment_method_installments') return deleteInstallmentsChain
+        return updateChain
+      })
 
       const { updatePaymentMethod } = await import('./actions')
       const formData = createFormData({
@@ -254,6 +316,55 @@ describe('Payment Methods Actions', () => {
       })
       const result = await updatePaymentMethod(formData)
       expect(result).toEqual({ success: 'Método de pagamento atualizado com sucesso!' })
+    })
+
+    it('atualiza método com parcelamento e substitui taxas', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: { id: 'user-123' } },
+      })
+      const updateChain = {
+        update: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }
+      const deleteInstallmentsChain = {
+        delete: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }
+      const insertInstallmentsChain = {
+        insert: vi.fn().mockResolvedValue({ error: null }),
+      }
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'payment_method_installments') {
+          // First call is delete, subsequent is insert
+          if (deleteInstallmentsChain.delete.mock.calls.length === 0) {
+            return deleteInstallmentsChain
+          }
+          return insertInstallmentsChain
+        }
+        return updateChain
+      })
+
+      const { updatePaymentMethod } = await import('./actions')
+      const installments = JSON.stringify([
+        { installment_number: 2, fee_percentage: 5 },
+        { installment_number: 3, fee_percentage: 7 },
+      ])
+      const formData = createFormData({
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        name: 'Cartão Crédito Parcelas',
+        fee_type: 'percentage',
+        fee_value: '3',
+        is_active: 'true',
+        supports_installments: 'true',
+        installments_json: installments,
+      })
+      const result = await updatePaymentMethod(formData)
+      expect(result).toEqual({ success: 'Método de pagamento atualizado com sucesso!' })
+      expect(insertInstallmentsChain.insert).toHaveBeenCalledWith([
+        { payment_method_id: '550e8400-e29b-41d4-a716-446655440000', installment_number: 2, fee_percentage: 5 },
+        { payment_method_id: '550e8400-e29b-41d4-a716-446655440000', installment_number: 3, fee_percentage: 7 },
+      ])
     })
 
     it('retorna erro ao falhar atualização', async () => {

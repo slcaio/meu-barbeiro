@@ -8,13 +8,13 @@ import { ptBR } from 'date-fns/locale'
 import { Check, X, User, Phone, Scissors, Calendar, FileText, Info } from 'lucide-react'
 import { AppointmentPOSDialog } from './appointment-pos-dialog'
 import { formatPhone } from '@/lib/utils'
-import type { AppointmentWithRelations, PaymentMethodOption } from '@/types/database.types'
+import type { AppointmentWithRelations, PaymentMethodWithInstallments } from '@/types/database.types'
 
 interface AppointmentDetailsDialogProps {
   appointment: AppointmentWithRelations
   isOpen: boolean
   onOpenChange: (open: boolean) => void
-  paymentMethods: PaymentMethodOption[]
+  paymentMethods: PaymentMethodWithInstallments[]
 }
 
 export function AppointmentDetailsDialog({

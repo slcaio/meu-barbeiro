@@ -8,12 +8,20 @@ const paymentMethodSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
   fee_type: z.enum(['percentage', 'fixed']).default('percentage'),
   fee_value: z.coerce.number().min(0, 'Taxa não pode ser negativa').default(0),
+  supports_installments: z.coerce.boolean().default(false),
 })
 
 const updatePaymentMethodSchema = paymentMethodSchema.extend({
   id: z.string().uuid(),
   is_active: z.coerce.boolean().default(true),
 })
+
+const installmentEntrySchema = z.object({
+  installment_number: z.coerce.number().int().min(2).max(12),
+  fee_percentage: z.coerce.number().min(0),
+})
+
+const installmentsArraySchema = z.array(installmentEntrySchema)
 
 export async function getPaymentMethods() {
   const supabase = await createClient()
@@ -47,6 +55,7 @@ export async function createPaymentMethod(formData: FormData) {
     name: formData.get('name'),
     fee_type: formData.get('fee_type') || 'percentage',
     fee_value: formData.get('fee_value') || '0',
+    supports_installments: formData.get('supports_installments') === 'true',
   }
 
   const validation = paymentMethodSchema.safeParse(rawData)
@@ -62,18 +71,47 @@ export async function createPaymentMethod(formData: FormData) {
 
   if (!barbershop) return { error: 'Barbearia não encontrada.' }
 
-  const { error } = await supabase
+  const { data: newMethod, error } = await supabase
     .from('payment_methods')
     .insert({
       barbershop_id: barbershop.id,
       name: validation.data.name,
       fee_type: validation.data.fee_type,
       fee_value: validation.data.fee_value,
+      supports_installments: validation.data.supports_installments,
     })
+    .select('id')
+    .single()
 
-  if (error) {
+  if (error || !newMethod) {
     console.error('Error creating payment method:', error)
     return { error: 'Erro ao cadastrar método de pagamento.' }
+  }
+
+  // Insert installment tiers if supports_installments
+  if (validation.data.supports_installments) {
+    const installmentsJson = formData.get('installments_json') as string | null
+    if (installmentsJson) {
+      try {
+        const parsed = JSON.parse(installmentsJson)
+        const installmentsValidation = installmentsArraySchema.safeParse(parsed)
+        if (installmentsValidation.success && installmentsValidation.data.length > 0) {
+          const rows = installmentsValidation.data.map((entry) => ({
+            payment_method_id: newMethod.id,
+            installment_number: entry.installment_number,
+            fee_percentage: entry.fee_percentage,
+          }))
+          const { error: installError } = await supabase
+            .from('payment_method_installments')
+            .insert(rows)
+          if (installError) {
+            console.error('Error creating installments:', installError)
+          }
+        }
+      } catch {
+        console.error('Invalid installments JSON')
+      }
+    }
   }
 
   revalidatePath('/settings/payment-methods')
@@ -92,6 +130,7 @@ export async function updatePaymentMethod(formData: FormData) {
     fee_type: formData.get('fee_type') || 'percentage',
     fee_value: formData.get('fee_value') || '0',
     is_active: formData.get('is_active') === 'true',
+    supports_installments: formData.get('supports_installments') === 'true',
   }
 
   const validation = updatePaymentMethodSchema.safeParse(rawData)
@@ -106,12 +145,44 @@ export async function updatePaymentMethod(formData: FormData) {
       fee_type: validation.data.fee_type,
       fee_value: validation.data.fee_value,
       is_active: validation.data.is_active,
+      supports_installments: validation.data.supports_installments,
     })
     .eq('id', validation.data.id)
 
   if (error) {
     console.error('Error updating payment method:', error)
     return { error: 'Erro ao atualizar método de pagamento.' }
+  }
+
+  // Replace installments: delete all existing, then insert new ones
+  await supabase
+    .from('payment_method_installments')
+    .delete()
+    .eq('payment_method_id', validation.data.id)
+
+  if (validation.data.supports_installments) {
+    const installmentsJson = formData.get('installments_json') as string | null
+    if (installmentsJson) {
+      try {
+        const parsed = JSON.parse(installmentsJson)
+        const installmentsValidation = installmentsArraySchema.safeParse(parsed)
+        if (installmentsValidation.success && installmentsValidation.data.length > 0) {
+          const rows = installmentsValidation.data.map((entry) => ({
+            payment_method_id: validation.data.id,
+            installment_number: entry.installment_number,
+            fee_percentage: entry.fee_percentage,
+          }))
+          const { error: installError } = await supabase
+            .from('payment_method_installments')
+            .insert(rows)
+          if (installError) {
+            console.error('Error updating installments:', installError)
+          }
+        }
+      } catch {
+        console.error('Invalid installments JSON')
+      }
+    }
   }
 
   revalidatePath('/settings/payment-methods')

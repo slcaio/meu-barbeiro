@@ -157,6 +157,7 @@ export async function completeAppointmentWithTransaction(formData: FormData) {
   const amount = Number(formData.get('amount'))
   const description = formData.get('description') as string
   const paymentMethodId = formData.get('payment_method_id') as string | null
+  const installments = Number(formData.get('installments') || '1')
 
   if (!appointmentId || !action) {
     return { error: 'Dados incompletos.' }
@@ -170,11 +171,13 @@ export async function completeAppointmentWithTransaction(formData: FormData) {
     total_amount?: number;
     payment_status?: 'paid' | 'pending' | 'refunded' | 'partial';
     payment_method_id?: string | null;
+    installments?: number;
   } = { status }
   
   if (action === 'complete') {
     updateData.total_amount = amount
     updateData.payment_status = 'paid'
+    updateData.installments = installments
     if (paymentMethodId) {
       updateData.payment_method_id = paymentMethodId
     }
@@ -226,24 +229,46 @@ export async function completeAppointmentWithTransaction(formData: FormData) {
       if (action === 'complete' && paymentMethodId) {
         const { data: paymentMethod } = await supabase
           .from('payment_methods')
-          .select('name, fee_type, fee_value')
+          .select('name, fee_type, fee_value, supports_installments')
           .eq('id', paymentMethodId)
           .single()
 
-        if (paymentMethod && paymentMethod.fee_value > 0) {
-          const feeAmount = paymentMethod.fee_type === 'percentage'
-            ? amount * (paymentMethod.fee_value / 100)
-            : paymentMethod.fee_value
+        if (paymentMethod) {
+          let feeAmount = 0
+          let feeDescription = ''
 
-          await supabase.from('financial_records').insert({
-            barbershop_id: barbershop.id,
-            type: 'expense',
-            amount: feeAmount,
-            category: 'Taxa de Pagamento',
-            description: `Taxa ${paymentMethod.name} - ${paymentMethod.fee_type === 'percentage' ? `${paymentMethod.fee_value}%` : `R$ ${paymentMethod.fee_value.toFixed(2)}`}`,
-            payment_method_id: paymentMethodId,
-            record_date: new Date().toISOString().split('T')[0],
-          })
+          if (installments > 1 && paymentMethod.supports_installments) {
+            // Use installment-specific fee from payment_method_installments
+            const { data: installmentTier } = await supabase
+              .from('payment_method_installments')
+              .select('fee_percentage')
+              .eq('payment_method_id', paymentMethodId)
+              .eq('installment_number', installments)
+              .single()
+
+            if (installmentTier && installmentTier.fee_percentage > 0) {
+              feeAmount = amount * (installmentTier.fee_percentage / 100)
+              feeDescription = `Taxa ${paymentMethod.name} ${installments}x - ${installmentTier.fee_percentage}%`
+            }
+          } else if (paymentMethod.fee_value > 0) {
+            // Use base fee (1x / à vista)
+            feeAmount = paymentMethod.fee_type === 'percentage'
+              ? amount * (paymentMethod.fee_value / 100)
+              : paymentMethod.fee_value
+            feeDescription = `Taxa ${paymentMethod.name} - ${paymentMethod.fee_type === 'percentage' ? `${paymentMethod.fee_value}%` : `R$ ${paymentMethod.fee_value.toFixed(2)}`}`
+          }
+
+          if (feeAmount > 0) {
+            await supabase.from('financial_records').insert({
+              barbershop_id: barbershop.id,
+              type: 'expense',
+              amount: feeAmount,
+              category: 'Taxa de Pagamento',
+              description: feeDescription,
+              payment_method_id: paymentMethodId,
+              record_date: new Date().toISOString().split('T')[0],
+            })
+          }
         }
       }
 

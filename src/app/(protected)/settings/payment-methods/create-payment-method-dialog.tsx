@@ -8,13 +8,35 @@ import { Label } from '@/components/ui/label'
 import { Plus } from 'lucide-react'
 import { createPaymentMethod } from '@/app/payment-methods/actions'
 
+const MAX_INSTALLMENTS = 12
+
 export function CreatePaymentMethodDialog() {
   const [isOpen, setIsOpen] = useState(false)
+  const [supportsInstallments, setSupportsInstallments] = useState(false)
+  const [installmentFees, setInstallmentFees] = useState<Record<number, string>>({})
+
+  const handleInstallmentFeeChange = (num: number, value: string) => {
+    setInstallmentFees((prev) => ({ ...prev, [num]: value }))
+  }
 
   const handleSubmit = async (formData: FormData) => {
+    formData.set('supports_installments', supportsInstallments.toString())
+
+    if (supportsInstallments) {
+      const installments = Object.entries(installmentFees)
+        .filter(([, val]) => val !== '' && Number(val) >= 0)
+        .map(([num, val]) => ({
+          installment_number: Number(num),
+          fee_percentage: Number(val),
+        }))
+      formData.set('installments_json', JSON.stringify(installments))
+    }
+
     const result = await createPaymentMethod(formData)
     if (result?.success) {
       setIsOpen(false)
+      setSupportsInstallments(false)
+      setInstallmentFees({})
     } else if (result?.error) {
       alert(result.error)
     }
@@ -48,7 +70,7 @@ export function CreatePaymentMethodDialog() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="fee_value">Valor da Taxa</Label>
+              <Label htmlFor="fee_value">Taxa à Vista (1x)</Label>
               <Input
                 id="fee_value"
                 name="fee_value"
@@ -60,6 +82,44 @@ export function CreatePaymentMethodDialog() {
               />
             </div>
           </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="supports-installments"
+              checked={supportsInstallments}
+              onChange={(e) => setSupportsInstallments(e.target.checked)}
+              className="h-4 w-4 rounded border-input text-primary focus:ring-ring"
+            />
+            <Label htmlFor="supports-installments" className="text-sm font-normal">
+              Aceita parcelamento (até 12x)
+            </Label>
+          </div>
+
+          {supportsInstallments && (
+            <div className="space-y-3 border rounded-md p-4 bg-muted/50">
+              <p className="text-sm font-medium">Taxas por parcela</p>
+              <p className="text-xs text-muted-foreground">
+                Informe a taxa percentual para cada número de parcelas. Deixe em branco as que não deseja oferecer.
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {Array.from({ length: MAX_INSTALLMENTS - 1 }, (_, i) => i + 2).map((num) => (
+                  <div key={num} className="flex items-center gap-2">
+                    <span className="text-sm font-medium w-8 shrink-0">{num}x</span>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="%"
+                      value={installmentFees[num] ?? ''}
+                      onChange={(e) => handleInstallmentFeeChange(num, e.target.value)}
+                      className="h-9"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="pt-4 flex justify-end space-x-2">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
