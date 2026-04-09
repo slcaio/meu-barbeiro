@@ -80,7 +80,7 @@ export function PaymentMethodList({ paymentMethods }: { paymentMethods: PaymentM
                   className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-4 last:border-0 last:pb-0 gap-3"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold shrink-0">
+                    <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold shrink-0">
                       {pm.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
@@ -88,13 +88,13 @@ export function PaymentMethodList({ paymentMethods }: { paymentMethods: PaymentM
                         <p className="font-medium">{pm.name}</p>
                         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                           pm.fee_value > 0
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-green-100 text-green-800'
+                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                            : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                         }`}>
                           {formatFee(pm.fee_type, pm.fee_value)}
                         </span>
                         {!pm.is_active && (
-                          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-red-100 text-red-800">
+                          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-red-500/10 text-red-600 dark:text-red-400">
                             Inativo
                           </span>
                         )}
@@ -138,7 +138,7 @@ export function PaymentMethodList({ paymentMethods }: { paymentMethods: PaymentM
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                          className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
                           onClick={() => setConfirmDeleteId(pm.id)}
                         >
                           <Trash2 className="h-4 w-4" />

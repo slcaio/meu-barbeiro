@@ -180,11 +180,11 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
             </select>
           )}
 
-          <div className="flex bg-gray-100 p-1 rounded-lg shrink-0">
+          <div className="flex bg-muted p-1 rounded-lg shrink-0">
             <button
               onClick={() => toolbar.onView(Views.DAY)}
               className={`px-2 sm:px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                view === Views.DAY ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'
+                view === Views.DAY ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               Dia
@@ -192,7 +192,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
             <button
               onClick={() => toolbar.onView(Views.WEEK)}
               className={`px-2 sm:px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                view === Views.WEEK ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'
+                view === Views.WEEK ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               Semana
@@ -217,7 +217,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
   }
 
   return (
-    <div className="h-[calc(100vh-200px)] sm:h-[calc(100vh-140px)] min-h-[500px] sm:min-h-[600px] bg-white p-3 sm:p-6 rounded-xl shadow-sm border flex flex-col overflow-hidden">
+    <div className="h-[calc(100vh-200px)] sm:h-[calc(100vh-140px)] min-h-[500px] sm:min-h-[600px] bg-card p-3 sm:p-6 rounded-xl shadow-sm border flex flex-col overflow-hidden">
       <div className="flex justify-between items-center mb-2 flex-shrink-0">
          <h2 className="text-xl font-bold hidden">Calendário</h2>
          <CreateAppointmentDialog 

@@ -26,6 +26,10 @@ vi.mock('@/app/auth/actions', () => ({
   recoverPassword: vi.fn(),
 }))
 
+vi.mock('lucide-react', () => ({
+  Scissors: () => <svg data-testid="scissors-icon" />,
+}))
+
 describe('Login Page', () => {
   it('renderiza formulário de login', async () => {
     const LoginPage = (await import('./page')).default

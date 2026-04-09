@@ -44,7 +44,7 @@ export function CategoryList({ categories }: { categories: Category[] }) {
           <Button
             variant="ghost"
             size="icon"
-            className="text-gray-400 hover:text-red-500"
+            className="text-muted-foreground hover:text-red-500"
             onClick={() => handleDelete(category.id, category.name)}
             disabled={isPending}
           >

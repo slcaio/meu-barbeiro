@@ -32,9 +32,9 @@ const roleLabels: Record<string, string> = {
 }
 
 const roleColors: Record<string, string> = {
-  barber: 'bg-blue-100 text-blue-800',
-  senior_barber: 'bg-purple-100 text-purple-800',
-  trainee: 'bg-yellow-100 text-yellow-800',
+  barber: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+  senior_barber: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
+  trainee: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
 }
 
 export function BarberList({ barbers }: { barbers: Barber[] }) {
@@ -91,17 +91,17 @@ export function BarberList({ barbers }: { barbers: Barber[] }) {
                   className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-4 last:border-0 last:pb-0 gap-3"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">
                       {barber.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="font-medium">{barber.name}</p>
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${roleColors[barber.role] || 'bg-gray-100 text-gray-800'}`}>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${roleColors[barber.role] || 'bg-muted text-muted-foreground'}`}>
                           {roleLabels[barber.role] || barber.role}
                         </span>
                         {!barber.is_active && (
-                          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-red-100 text-red-800">
+                          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-red-500/10 text-red-600 dark:text-red-400">
                             Inativo
                           </span>
                         )}
@@ -148,7 +148,7 @@ export function BarberList({ barbers }: { barbers: Barber[] }) {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                          className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
                           onClick={() => setConfirmDeleteId(barber.id)}
                         >
                           <Trash2 className="h-4 w-4" />

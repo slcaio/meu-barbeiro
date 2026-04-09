@@ -7,6 +7,9 @@ vi.mock('next/link', () => ({
 
 vi.mock('lucide-react', () => ({
   Scissors: () => <svg data-testid="scissors-icon" />,
+  Calendar: () => <svg data-testid="calendar-icon" />,
+  DollarSign: () => <svg data-testid="dollar-icon" />,
+  Users: () => <svg data-testid="users-icon" />,
 }))
 
 describe('Landing Page', () => {

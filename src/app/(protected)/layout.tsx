@@ -10,10 +10,12 @@ import {
   LogOut, 
   Menu,
   Scissors,
-  Users
+  Users,
+  X
 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { signout } from '@/app/auth/actions'
 import { cn } from '@/lib/utils'
 
@@ -34,89 +36,105 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-background">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 md:hidden"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
-      <div className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 transform bg-white shadow-lg transition-transform duration-200 ease-in-out md:translate-x-0",
+      <aside className={cn(
+        "fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col bg-sidebar border-r border-sidebar-border transition-transform duration-300 ease-in-out md:translate-x-0",
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="flex h-full flex-col">
-          {/* Sidebar Header */}
-          <div className="flex h-16 items-center justify-center border-b px-4">
-            <Link href="/dashboard" className="flex items-center space-x-2">
-              <Scissors className="h-8 w-8 text-blue-600" />
-              <span className="text-xl font-bold text-gray-900">Meu Barbeiro</span>
-            </Link>
+        {/* Sidebar Header */}
+        <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-6">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+            <Scissors className="h-5 w-5 text-primary-foreground" />
           </div>
+          <Link href="/dashboard" className="flex items-center">
+            <span className="text-lg font-bold text-sidebar-foreground">Meu Barbeiro</span>
+          </Link>
+          {/* Mobile close button */}
+          <button
+            className="ml-auto md:hidden text-sidebar-foreground/60 hover:text-sidebar-foreground"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 space-y-1 px-2 py-4">
-            {navigation.map((item) => {
-              const isActive = pathname.startsWith(item.href)
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
+        {/* Navigation */}
+        <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
+          {navigation.map((item) => {
+            const isActive = pathname.startsWith(item.href)
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                onClick={() => setSidebarOpen(false)}
+                className={cn(
+                  "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-primary shadow-sm"
+                    : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                )}
+              >
+                <item.icon
                   className={cn(
-                    "group flex items-center rounded-md px-2 py-2 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    "h-5 w-5 flex-shrink-0 transition-colors",
+                    isActive ? "text-sidebar-primary" : "text-sidebar-foreground/40 group-hover:text-sidebar-foreground/70"
                   )}
-                >
-                  <item.icon
-                    className={cn(
-                      "mr-3 h-5 w-5 flex-shrink-0 transition-colors",
-                      isActive ? "text-blue-700" : "text-gray-400 group-hover:text-gray-500"
-                    )}
-                  />
-                  {item.name}
-                </Link>
-              )
-            })}
-          </nav>
+                />
+                {item.name}
+                {isActive && (
+                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-sidebar-primary" />
+                )}
+              </Link>
+            )
+          })}
+        </nav>
 
-          {/* User Profile / Logout */}
-          <div className="border-t p-4">
-            <form action={signout}>
-              <Button variant="ghost" className="w-full justify-start text-red-600 hover:bg-red-50 hover:text-red-700">
-                <LogOut className="mr-3 h-5 w-5" />
+        {/* Logout */}
+        <div className="border-t border-sidebar-border p-3">
+          <div className="flex items-center gap-2">
+            <form action={signout} className="flex-1">
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start gap-3 text-sidebar-foreground/60 hover:bg-destructive/10 hover:text-destructive"
+              >
+                <LogOut className="h-5 w-5" />
                 Sair
               </Button>
             </form>
+            <ThemeToggle />
           </div>
         </div>
-      </div>
+      </aside>
 
       {/* Main Content */}
-      <div className="flex flex-1 flex-col md:pl-64">
+      <div className="flex flex-1 flex-col md:pl-[280px]">
         {/* Mobile Header */}
-        <div className="sticky top-0 z-10 flex h-16 flex-shrink-0 bg-white shadow md:hidden">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-md px-4 md:hidden">
           <button
             type="button"
-            className="px-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 md:hidden"
+            className="inline-flex items-center justify-center rounded-lg p-2 text-foreground/60 hover:bg-accent hover:text-foreground transition-colors"
             onClick={() => setSidebarOpen(true)}
           >
-            <span className="sr-only">Open sidebar</span>
-            <Menu className="h-6 w-6" />
+            <span className="sr-only">Abrir menu</span>
+            <Menu className="h-5 w-5" />
           </button>
-          <div className="flex flex-1 items-center justify-center px-4">
-             <span className="text-lg font-semibold text-gray-900">Meu Barbeiro</span>
+          <div className="flex items-center gap-2">
+            <Scissors className="h-5 w-5 text-primary" />
+            <span className="text-base font-semibold text-foreground">Meu Barbeiro</span>
           </div>
-        </div>
+        </header>
 
-        <main className="flex-1 py-6">
-          <div className="px-4 sm:px-6 md:px-8">
-            {children}
-          </div>
+        <main className="flex-1 p-4 sm:p-6 md:p-8">
+          {children}
         </main>
       </div>
     </div>

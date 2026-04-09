@@ -61,7 +61,7 @@ export function ClientSelector({ clients, onSelect, onNewClient }: ClientSelecto
           {search && (
             <button 
               type="button"
-              className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
+              className="absolute right-2 top-2.5 text-muted-foreground hover:text-foreground"
               onClick={() => {
                 setSearch('')
                 setShowDropdown(false)
@@ -71,14 +71,14 @@ export function ClientSelector({ clients, onSelect, onNewClient }: ClientSelecto
             </button>
           )}
         </div>
-        <Button type="button" className="h-10 bg-blue-600 hover:bg-blue-700 text-white" onClick={onNewClient}>
+        <Button type="button" className="h-10" onClick={onNewClient}>
           <Plus className="mr-2 h-4 w-4" />
           Adicionar
         </Button>
       </div>
 
       {showDropdown && search && (
-        <div className="absolute z-50 w-full bg-white border rounded-md shadow-lg mt-1 max-h-60 overflow-auto">
+        <div className="absolute z-50 w-full bg-popover border rounded-md shadow-lg mt-1 max-h-60 overflow-auto">
           {filteredClients.length === 0 ? (
             <div className="p-2 text-sm text-muted-foreground text-center">
               Nenhum cliente encontrado.
@@ -87,7 +87,7 @@ export function ClientSelector({ clients, onSelect, onNewClient }: ClientSelecto
             filteredClients.map(client => (
               <div 
                 key={client.id}
-                className="p-2 hover:bg-gray-100 cursor-pointer text-sm flex justify-between items-center border-b last:border-0"
+                className="p-2 hover:bg-accent cursor-pointer text-sm flex justify-between items-center border-b last:border-0"
                 onClick={() => {
                   onSelect(client)
                   setSearch('')

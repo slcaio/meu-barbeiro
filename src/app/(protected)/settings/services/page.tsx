@@ -100,7 +100,7 @@ export default async function ServicesPage() {
                       'use server'
                       await deleteService(service.id)
                     }}>
-                      <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50">
+                      <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-500/10">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </form>

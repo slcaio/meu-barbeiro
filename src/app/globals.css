@@ -40,6 +40,11 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -59,74 +64,83 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: hsl(210 40% 98%);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #eff6ff;
+  --accent-foreground: #1e40af;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --success: #10b981;
+  --success-foreground: #ffffff;
+  --warning: #f59e0b;
+  --warning-foreground: #ffffff;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #2563eb;
   --radius: 0.625rem;
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --chart-1: #2563eb;
+  --chart-2: #06b6d4;
+  --chart-3: #10b981;
+  --chart-4: #f59e0b;
+  --chart-5: #ef4444;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0f172a;
+  --sidebar-primary: #2563eb;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eff6ff;
+  --sidebar-accent-foreground: #1e40af;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #2563eb;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: hsl(210 40% 98%);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  color-scheme: dark;
+  --background: #0a1628;
+  --foreground: #f1f5f9;
+  --card: #111d35;
+  --card-foreground: #f1f5f9;
+  --popover: #111d35;
+  --popover-foreground: #f1f5f9;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --secondary: #1a2844;
+  --secondary-foreground: #f1f5f9;
+  --muted: #1a2844;
+  --muted-foreground: #94a3b8;
+  --accent: #1e3a5f;
+  --accent-foreground: #93c5fd;
+  --destructive: #f87171;
+  --destructive-foreground: #ffffff;
+  --success: #34d399;
+  --success-foreground: #ffffff;
+  --warning: #fbbf24;
+  --warning-foreground: #0f172a;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: #3b82f6;
+  --chart-1: #3b82f6;
+  --chart-2: #22d3ee;
+  --chart-3: #34d399;
+  --chart-4: #fbbf24;
+  --chart-5: #f87171;
+  --sidebar: #0d1a30;
+  --sidebar-foreground: #f1f5f9;
+  --sidebar-primary: #3b82f6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1a2844;
+  --sidebar-accent-foreground: #93c5fd;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #3b82f6;
 }
 
 @layer base {
@@ -138,34 +152,71 @@
   }
 }
 
-/* React Big Calendar Overrides */
+/* React Big Calendar Overrides — force all borders to use theme variable */
 .rbc-calendar { font-family: inherit; }
 .rbc-toolbar { display: none !important; }
+
+/* Reset every border the library sets to use our CSS variable */
+.rbc-header,
+.rbc-time-view,
+.rbc-time-content,
+.rbc-timeslot-group,
+.rbc-day-slot .rbc-time-slot,
+.rbc-time-content > * + * > *,
+.rbc-day-bg + .rbc-day-bg,
+.rbc-time-header-content,
+.rbc-month-view,
+.rbc-month-row + .rbc-month-row,
+.rbc-time-gutter,
+.rbc-time-header-gutter {
+  border-color: var(--border) !important;
+}
+
 .rbc-header { 
   padding: 12px 8px; 
   font-weight: 600; 
   font-size: 0.875rem; 
-  border-bottom: 1px solid #e5e7eb; 
+  border-bottom: 1px solid var(--border) !important; 
   white-space: nowrap; 
   overflow: hidden; 
   text-overflow: ellipsis; 
   height: 40px; 
   display: flex; 
   align-items: center; 
-  justify-content: center; 
+  justify-content: center;
+  color: var(--foreground);
+  background: var(--card);
 }
 .rbc-time-view { 
-  border: 1px solid #e5e7eb; 
+  border: 1px solid var(--border) !important; 
   border-radius: 0.5rem; 
   overflow: hidden; 
   flex: 1; 
-  min-height: 0; 
+  min-height: 0;
+  background: var(--card);
 }
-.rbc-time-content { border-top: 1px solid #e5e7eb; }
-.rbc-timeslot-group { border-bottom: 1px solid #f3f4f6; }
-.rbc-day-slot .rbc-time-slot { border-top: 1px solid #f3f4f6; }
-.rbc-current-time-indicator { background-color: #ef4444; height: 2px; }
-.rbc-event { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
-.rbc-today { background-color: #f9fafb; }
+.rbc-time-content { border-top: 1px solid var(--border) !important; background: var(--card); }
+.rbc-time-content > * + * > * { border-left: 1px solid var(--border) !important; }
+.rbc-timeslot-group { border-bottom: 1px solid var(--border) !important; min-height: 120px !important; }
+.rbc-day-slot .rbc-time-slot { border-top: 1px solid var(--border) !important; }
+.rbc-day-slot .rbc-events-container { background: transparent; }
+.rbc-current-time-indicator { background-color: var(--destructive); height: 2px; }
+.rbc-event { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.15); border-radius: 6px; border: none !important; }
+.rbc-today { background-color: var(--accent) !important; }
 .rbc-allday-cell { display: none !important; }
-.rbc-timeslot-group { min-height: 120px !important; }
+.rbc-label { color: var(--muted-foreground); font-size: 0.75rem; }
+.rbc-time-gutter { background: var(--card); border-right: 1px solid var(--border) !important; }
+.rbc-time-header-gutter { background: var(--card); border-bottom: 1px solid var(--border) !important; }
+.rbc-day-bg { background: var(--card); }
+.rbc-off-range-bg { background: var(--muted); }
+.rbc-month-view { background: var(--card); border: 1px solid var(--border) !important; border-radius: 0.5rem; }
+.rbc-month-row + .rbc-month-row { border-top: 1px solid var(--border) !important; }
+.rbc-date-cell { color: var(--foreground); }
+.rbc-day-bg + .rbc-day-bg { border-left: 1px solid var(--border) !important; }
+.rbc-time-header-content { border-left: 1px solid var(--border) !important; }
+.rbc-time-header { background: var(--card); }
+.rbc-addons-dnd .rbc-addons-dnd-resize-ns-anchor .rbc-addons-dnd-resize-ns-icon { display: none; }
+
+/* DnD addon borders */
+.rbc-addons-dnd .rbc-addons-dnd-row-body { border-color: var(--border) !important; }
+.rbc-addons-dnd .rbc-addons-dnd-drag-row { border-color: var(--border) !important; }

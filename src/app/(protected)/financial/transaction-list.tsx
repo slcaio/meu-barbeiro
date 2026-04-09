@@ -48,7 +48,7 @@ export function TransactionList({ transactions }: { transactions: Transaction[] 
                   {t.category}
                 </span>
                 {t.paymentMethodName && (
-                  <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded text-xs font-medium">
+                  <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded text-xs font-medium">
                     {t.paymentMethodName}
                   </span>
                 )}
@@ -62,7 +62,7 @@ export function TransactionList({ transactions }: { transactions: Transaction[] 
           </div>
           
           <div className="flex items-center justify-end gap-2 sm:gap-4 shrink-0 pl-9 sm:pl-0">
-            <span className={`font-bold whitespace-nowrap ${t.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+            <span className={`font-bold whitespace-nowrap ${t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
               {t.type === 'income' ? '+' : '-'} 
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
             </span>
@@ -71,7 +71,7 @@ export function TransactionList({ transactions }: { transactions: Transaction[] 
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="text-gray-400 hover:text-red-500"
+                className="text-muted-foreground hover:text-red-500"
                 onClick={() => handleDelete(t.id)}
                 disabled={isPending}
               >

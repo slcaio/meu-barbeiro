@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { useTransition } from 'react'
+import { Scissors } from 'lucide-react'
 
 const initialState = {
   error: null as string | null,
@@ -18,9 +18,12 @@ export default function LoginPage() {
   const [state, formAction, isPending] = useActionState(login, initialState)
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8">
+      <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-1">
+          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+            <Scissors className="h-6 w-6 text-primary" />
+          </div>
           <CardTitle className="text-2xl font-bold text-center">Entrar</CardTitle>
           <CardDescription className="text-center">
             Digite seu email e senha para acessar o painel
@@ -37,7 +40,7 @@ export default function LoginPage() {
                 <Label htmlFor="password">Senha</Label>
                 <Link
                   href="/recovery"
-                  className="text-sm font-medium text-blue-600 hover:text-blue-500"
+                  className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
                 >
                   Esqueceu a senha?
                 </Link>
@@ -45,7 +48,7 @@ export default function LoginPage() {
               <Input id="password" name="password" type="password" required />
             </div>
             {state?.error && (
-              <div className="text-sm text-red-500 text-center">{state.error}</div>
+              <div className="text-sm text-destructive text-center">{state.error}</div>
             )}
           </CardContent>
           <CardFooter>
@@ -54,9 +57,9 @@ export default function LoginPage() {
             </Button>
           </CardFooter>
         </form>
-        <div className="px-8 pb-8 text-center text-sm text-gray-500">
+        <div className="px-8 pb-8 text-center text-sm text-muted-foreground">
           Não tem uma conta?{' '}
-          <Link href="/register" className="font-semibold text-blue-600 hover:text-blue-500">
+          <Link href="/register" className="font-semibold text-primary hover:text-primary/80 transition-colors">
             Cadastre-se
           </Link>
         </div>

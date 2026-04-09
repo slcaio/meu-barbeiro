@@ -86,7 +86,7 @@ export function EditPaymentMethodDialog({ paymentMethod, isOpen, onOpenChange }:
             id="edit-is-active"
             checked={isActive}
             onChange={(e) => setIsActive(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            className="h-4 w-4 rounded border-input text-primary focus:ring-ring"
           />
           <Label htmlFor="edit-is-active" className="text-sm font-normal">
             Método ativo (disponível para seleção)

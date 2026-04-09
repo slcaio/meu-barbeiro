@@ -95,7 +95,7 @@ export function StatementReportDialog({
                 <CardTitle className="text-xs font-medium text-muted-foreground">Receita Total</CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-4">
-                <div className="text-lg sm:text-xl font-bold text-green-600">{formatBRL(summary.totalIncome)}</div>
+                <div className="text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400">{formatBRL(summary.totalIncome)}</div>
               </CardContent>
             </Card>
             <Card>
@@ -103,7 +103,7 @@ export function StatementReportDialog({
                 <CardTitle className="text-xs font-medium text-muted-foreground">Despesas</CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-4">
-                <div className="text-lg sm:text-xl font-bold text-red-600">{formatBRL(summary.expenses)}</div>
+                <div className="text-lg sm:text-xl font-bold text-red-600 dark:text-red-400">{formatBRL(summary.expenses)}</div>
               </CardContent>
             </Card>
             <Card>
@@ -111,7 +111,7 @@ export function StatementReportDialog({
                 <CardTitle className="text-xs font-medium text-muted-foreground">Lucro Líquido</CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-4">
-                <div className={`text-lg sm:text-xl font-bold ${summary.netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                <div className={`text-lg sm:text-xl font-bold ${summary.netProfit >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
                   {formatBRL(summary.netProfit)}
                 </div>
               </CardContent>
@@ -139,7 +139,7 @@ export function StatementReportDialog({
                   <div key={`${t.source}-${t.id}`} className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-3 sm:px-4 py-3 gap-1 sm:gap-3">
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                       {t.type === 'income' ? (
-                        <ArrowUpCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-500 shrink-0" />
+                        <ArrowUpCircle className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-500 shrink-0" />
                       ) : (
                         <ArrowDownCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-500 shrink-0" />
                       )}
@@ -150,7 +150,7 @@ export function StatementReportDialog({
                             {t.category}
                           </span>
                           {t.paymentMethodName && (
-                            <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-medium">
+                            <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded font-medium">
                               {t.paymentMethodName}
                             </span>
                           )}
@@ -159,7 +159,7 @@ export function StatementReportDialog({
                         </div>
                       </div>
                     </div>
-                    <span className={`text-sm font-bold whitespace-nowrap pl-6 sm:pl-0 ${t.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                    <span className={`text-sm font-bold whitespace-nowrap pl-6 sm:pl-0 ${t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                       {t.type === 'income' ? '+' : '-'} {formatBRL(t.amount)}
                     </span>
                   </div>

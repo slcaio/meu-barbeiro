@@ -24,6 +24,10 @@ vi.mock('@/app/auth/actions', () => ({
   signup: vi.fn(),
 }))
 
+vi.mock('lucide-react', () => ({
+  Scissors: () => <svg data-testid="scissors-icon" />,
+}))
+
 describe('Register Page', () => {
   it('renderiza formulário de cadastro', async () => {
     const RegisterPage = (await import('./page')).default

@@ -218,7 +218,7 @@ export function CommissionReportDialog() {
                     <CardTitle className="text-xs font-medium text-muted-foreground">Receita Gerada</CardTitle>
                   </CardHeader>
                   <CardContent className="px-4 pb-4">
-                    <div className="text-lg sm:text-xl font-bold text-green-600">{formatBRL(report.totals.totalRevenue)}</div>
+                    <div className="text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400">{formatBRL(report.totals.totalRevenue)}</div>
                   </CardContent>
                 </Card>
                 <Card>
@@ -226,7 +226,7 @@ export function CommissionReportDialog() {
                     <CardTitle className="text-xs font-medium text-muted-foreground">Total Comissões</CardTitle>
                   </CardHeader>
                   <CardContent className="px-4 pb-4">
-                    <div className="text-lg sm:text-xl font-bold text-amber-600">{formatBRL(report.totals.totalCommission)}</div>
+                    <div className="text-lg sm:text-xl font-bold text-amber-600 dark:text-amber-400">{formatBRL(report.totals.totalCommission)}</div>
                   </CardContent>
                 </Card>
               </div>

@@ -10,6 +10,14 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/dashboard',
 }))
 
+vi.mock('next-themes', () => ({
+  useTheme: () => ({ theme: 'dark', setTheme: vi.fn() }),
+}))
+
+vi.mock('@/components/theme-toggle', () => ({
+  ThemeToggle: () => <button aria-label="Alternar tema">toggle</button>,
+}))
+
 vi.mock('@/app/auth/actions', () => ({
   signout: vi.fn(),
 }))
@@ -23,6 +31,7 @@ vi.mock('lucide-react', () => ({
   Menu: () => <svg data-testid="menu-icon" />,
   Scissors: () => <svg data-testid="scissors-icon" />,
   Users: () => <svg data-testid="users-icon" />,
+  X: () => <svg data-testid="x-icon" />,
 }))
 
 describe('Protected Layout', () => {
@@ -70,6 +79,16 @@ describe('Protected Layout', () => {
     expect(screen.getByText('Sair')).toBeInTheDocument()
   })
 
+  it('renderiza toggle de tema', async () => {
+    const DashboardLayout = (await import('./layout')).default
+    render(
+      <DashboardLayout>
+        <div>Content</div>
+      </DashboardLayout>
+    )
+    expect(screen.getByLabelText('Alternar tema')).toBeInTheDocument()
+  })
+
   it('renderiza botão de menu mobile', async () => {
     const DashboardLayout = (await import('./layout')).default
     render(
@@ -77,7 +96,7 @@ describe('Protected Layout', () => {
         <div>Content</div>
       </DashboardLayout>
     )
-    expect(screen.getByText('Open sidebar')).toBeInTheDocument()
+    expect(screen.getByText('Abrir menu')).toBeInTheDocument()
   })
 
   it('links de navegação apontam para rotas corretas', async () => {

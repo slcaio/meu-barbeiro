@@ -119,7 +119,7 @@ export function AppointmentPOSDialog({
   return (
     <Modal isOpen={isOpen} onClose={() => onOpenChange(false)} title={title}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="bg-gray-50 p-3 rounded-md mb-4 text-sm text-gray-700">
+        <div className="bg-muted p-3 rounded-md mb-4 text-sm text-foreground/80">
             <p><strong>Cliente:</strong> {appointment?.client_name}</p>
             <p><strong>Serviço:</strong> {appointment?.services?.name}</p>
             {action === 'complete' && (
@@ -138,7 +138,7 @@ export function AppointmentPOSDialog({
             placeholder="R$ 0,00"
             required 
           />
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted-foreground">
             {action === 'complete' 
               ? 'Você pode alterar o valor final cobrado.' 
               : 'Se houver taxa de cancelamento, informe o valor acima. Caso contrário, mantenha 0.'}
@@ -181,7 +181,7 @@ export function AppointmentPOSDialog({
         )}
 
         {action === 'complete' && selectedMethod && feeAmount > 0 && (
-          <div className="bg-amber-50 border border-amber-200 p-3 rounded-md text-sm text-amber-800">
+          <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-md text-sm text-amber-600 dark:text-amber-400">
             <p><strong>Taxa ({selectedMethod.name} {selectedMethod.fee_type === 'percentage' ? `${selectedMethod.fee_value}%` : `R$ ${selectedMethod.fee_value.toFixed(2)}`}):</strong> {feeFormatted}</p>
           </div>
         )}
