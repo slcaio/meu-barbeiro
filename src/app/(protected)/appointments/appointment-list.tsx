@@ -6,7 +6,7 @@ import { Check, X, Clock } from 'lucide-react'
 import { useTransition, useState } from 'react'
 import { AppointmentPOSDialog } from './appointment-pos-dialog'
 
-export function AppointmentList({ appointments }: { appointments: any[] }) {
+export function AppointmentList({ appointments, paymentMethods = [] }: { appointments: any[]; paymentMethods?: any[] }) {
   const [isPending, startTransition] = useTransition()
   const [posOpen, setPosOpen] = useState(false)
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null)
@@ -98,6 +98,7 @@ export function AppointmentList({ appointments }: { appointments: any[] }) {
         isOpen={posOpen}
         onOpenChange={setPosOpen}
         action={posAction}
+        paymentMethods={paymentMethods}
       />
     </div>
   )

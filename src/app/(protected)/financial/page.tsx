@@ -144,7 +144,7 @@ export default async function FinancialPage(props: { searchParams: Promise<Searc
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Financeiro</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Financeiro</h1>
           <p className="text-muted-foreground">
             Gerencie suas receitas e despesas.
           </p>
@@ -159,14 +159,14 @@ export default async function FinancialPage(props: { searchParams: Promise<Searc
       <FinancialFilters categories={categories} />
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
             <TrendingUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-xl sm:text-2xl font-bold text-green-600">
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(summary.totalIncome)}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -180,7 +180,7 @@ export default async function FinancialPage(props: { searchParams: Promise<Searc
             <TrendingDown className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
+            <div className="text-xl sm:text-2xl font-bold text-red-600">
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(summary.expenses)}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -194,7 +194,7 @@ export default async function FinancialPage(props: { searchParams: Promise<Searc
             <DollarSign className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${summary.netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+            <div className={`text-xl sm:text-2xl font-bold ${summary.netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(summary.netProfit)}
             </div>
             <p className="text-xs text-muted-foreground">

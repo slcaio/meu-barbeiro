@@ -79,7 +79,7 @@ export function StatementReportDialog({
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Relatório do Extrato</DialogTitle>
           <DialogDescription>
@@ -89,13 +89,13 @@ export function StatementReportDialog({
 
         <div className="space-y-6 overflow-y-auto flex-1 pr-1">
           {/* Summary Cards */}
-          <div className="grid gap-3 grid-cols-3">
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
             <Card>
               <CardHeader className="pb-2 px-4 pt-4">
                 <CardTitle className="text-xs font-medium text-muted-foreground">Receita Total</CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-4">
-                <div className="text-xl font-bold text-green-600">{formatBRL(summary.totalIncome)}</div>
+                <div className="text-lg sm:text-xl font-bold text-green-600">{formatBRL(summary.totalIncome)}</div>
               </CardContent>
             </Card>
             <Card>
@@ -103,7 +103,7 @@ export function StatementReportDialog({
                 <CardTitle className="text-xs font-medium text-muted-foreground">Despesas</CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-4">
-                <div className="text-xl font-bold text-red-600">{formatBRL(summary.expenses)}</div>
+                <div className="text-lg sm:text-xl font-bold text-red-600">{formatBRL(summary.expenses)}</div>
               </CardContent>
             </Card>
             <Card>
@@ -111,7 +111,7 @@ export function StatementReportDialog({
                 <CardTitle className="text-xs font-medium text-muted-foreground">Lucro Líquido</CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-4">
-                <div className={`text-xl font-bold ${summary.netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                <div className={`text-lg sm:text-xl font-bold ${summary.netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                   {formatBRL(summary.netProfit)}
                 </div>
               </CardContent>
@@ -136,15 +136,15 @@ export function StatementReportDialog({
 
               <div className="divide-y border rounded-lg">
                 {transactions.map((t) => (
-                  <div key={`${t.source}-${t.id}`} className="flex items-center justify-between px-4 py-3">
-                    <div className="flex items-center gap-3">
+                  <div key={`${t.source}-${t.id}`} className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-3 sm:px-4 py-3 gap-1 sm:gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                       {t.type === 'income' ? (
-                        <ArrowUpCircle className="h-5 w-5 text-green-500 shrink-0" />
+                        <ArrowUpCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-500 shrink-0" />
                       ) : (
-                        <ArrowDownCircle className="h-5 w-5 text-red-500 shrink-0" />
+                        <ArrowDownCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-500 shrink-0" />
                       )}
-                      <div>
-                        <p className="text-sm font-medium">{t.description}</p>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{t.description}</p>
                         <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                           <span className="bg-secondary px-1.5 py-0.5 rounded font-medium">
                             {t.category}
@@ -159,7 +159,7 @@ export function StatementReportDialog({
                         </div>
                       </div>
                     </div>
-                    <span className={`text-sm font-bold whitespace-nowrap ${t.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                    <span className={`text-sm font-bold whitespace-nowrap pl-6 sm:pl-0 ${t.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
                       {t.type === 'income' ? '+' : '-'} {formatBRL(t.amount)}
                     </span>
                   </div>

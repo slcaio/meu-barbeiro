@@ -110,11 +110,11 @@ export function FinancialFilters({ categories }: { categories: Category[] }) {
   }
 
   return (
-    <div className="flex flex-col sm:flex-row gap-4 mb-6 items-end sm:items-center flex-wrap">
+    <div className="flex flex-col sm:flex-row gap-4 mb-6 items-stretch sm:items-center flex-wrap">
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium">Período</span>
         <Select value={currentPeriod} onValueChange={handlePeriodChange}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Período" />
           </SelectTrigger>
           <SelectContent>
@@ -136,7 +136,7 @@ export function FinancialFilters({ categories }: { categories: Category[] }) {
                 id="date"
                 variant={'outline'}
                 className={cn(
-                  "w-[240px] justify-start text-left font-normal",
+                  "w-full sm:w-[240px] justify-start text-left font-normal",
                   !date && "text-muted-foreground"
                 )}
               >
@@ -162,7 +162,7 @@ export function FinancialFilters({ categories }: { categories: Category[] }) {
                 defaultMonth={date?.from}
                 selected={date}
                 onSelect={handleDateSelect}
-                numberOfMonths={2}
+                numberOfMonths={1}
                 locale={ptBR}
               />
             </PopoverContent>
@@ -173,7 +173,7 @@ export function FinancialFilters({ categories }: { categories: Category[] }) {
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium">Tipo</span>
         <Select value={currentType} onValueChange={handleTypeChange}>
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger className="w-full sm:w-[150px]">
             <SelectValue placeholder="Tipo" />
           </SelectTrigger>
           <SelectContent>
@@ -187,7 +187,7 @@ export function FinancialFilters({ categories }: { categories: Category[] }) {
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium">Categoria</span>
         <Select value={currentCategory} onValueChange={handleCategoryChange}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Categoria" />
           </SelectTrigger>
           <SelectContent>

@@ -34,16 +34,16 @@ export function TransactionList({ transactions }: { transactions: Transaction[] 
   return (
     <div className="space-y-4">
       {transactions.map((t) => (
-        <div key={`${t.source}-${t.id}`} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
-          <div className="flex items-center gap-3">
+        <div key={`${t.source}-${t.id}`} className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b pb-4 last:border-0 last:pb-0 gap-2 sm:gap-4">
+          <div className="flex items-center gap-3 min-w-0">
             {t.type === 'income' ? (
-              <ArrowUpCircle className="h-8 w-8 text-green-500" />
+              <ArrowUpCircle className="h-6 w-6 sm:h-8 sm:w-8 text-green-500 shrink-0" />
             ) : (
-              <ArrowDownCircle className="h-8 w-8 text-red-500" />
+              <ArrowDownCircle className="h-6 w-6 sm:h-8 sm:w-8 text-red-500 shrink-0" />
             )}
-            <div>
-              <p className="font-medium">{t.description}</p>
-              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <div className="min-w-0">
+              <p className="font-medium truncate">{t.description}</p>
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-sm text-muted-foreground">
                 <span className="bg-secondary px-1.5 py-0.5 rounded text-xs font-medium">
                   {t.category}
                 </span>
@@ -61,8 +61,8 @@ export function TransactionList({ transactions }: { transactions: Transaction[] 
             </div>
           </div>
           
-          <div className="flex items-center gap-4">
-            <span className={`font-bold ${t.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+          <div className="flex items-center justify-end gap-2 sm:gap-4 shrink-0 pl-9 sm:pl-0">
+            <span className={`font-bold whitespace-nowrap ${t.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
               {t.type === 'income' ? '+' : '-'} 
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.amount)}
             </span>

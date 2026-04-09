@@ -127,7 +127,7 @@ export function CommissionReportDialog() {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Relatório de Comissões</DialogTitle>
           <DialogDescription>
@@ -171,7 +171,7 @@ export function CommissionReportDialog() {
                     defaultMonth={date?.from}
                     selected={date}
                     onSelect={setDate}
-                    numberOfMonths={2}
+                    numberOfMonths={1}
                     locale={ptBR}
                   />
                 </PopoverContent>
@@ -181,7 +181,7 @@ export function CommissionReportDialog() {
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium">Barbeiro</span>
               <Select value={selectedBarber} onValueChange={setSelectedBarber}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
@@ -204,13 +204,13 @@ export function CommissionReportDialog() {
           {report && (
             <div className="space-y-4">
               {/* Summary Cards */}
-              <div className="grid gap-3 grid-cols-3">
+              <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
                 <Card>
                   <CardHeader className="pb-2 px-4 pt-4">
                     <CardTitle className="text-xs font-medium text-muted-foreground">Atendimentos</CardTitle>
                   </CardHeader>
                   <CardContent className="px-4 pb-4">
-                    <div className="text-xl font-bold">{report.totals.totalAppointments}</div>
+                    <div className="text-lg sm:text-xl font-bold">{report.totals.totalAppointments}</div>
                   </CardContent>
                 </Card>
                 <Card>
@@ -218,7 +218,7 @@ export function CommissionReportDialog() {
                     <CardTitle className="text-xs font-medium text-muted-foreground">Receita Gerada</CardTitle>
                   </CardHeader>
                   <CardContent className="px-4 pb-4">
-                    <div className="text-xl font-bold text-green-600">{formatBRL(report.totals.totalRevenue)}</div>
+                    <div className="text-lg sm:text-xl font-bold text-green-600">{formatBRL(report.totals.totalRevenue)}</div>
                   </CardContent>
                 </Card>
                 <Card>
@@ -226,7 +226,7 @@ export function CommissionReportDialog() {
                     <CardTitle className="text-xs font-medium text-muted-foreground">Total Comissões</CardTitle>
                   </CardHeader>
                   <CardContent className="px-4 pb-4">
-                    <div className="text-xl font-bold text-amber-600">{formatBRL(report.totals.totalCommission)}</div>
+                    <div className="text-lg sm:text-xl font-bold text-amber-600">{formatBRL(report.totals.totalCommission)}</div>
                   </CardContent>
                 </Card>
               </div>

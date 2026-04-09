@@ -141,33 +141,35 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
     const label = () => {
       const date = toolbar.date
       return (
-        <span className="text-lg font-semibold capitalize whitespace-nowrap leading-relaxed">
+        <span className="text-sm sm:text-lg font-semibold capitalize leading-relaxed truncate">
           {format(date, view === Views.DAY ? "EEEE, d 'de' MMMM" : "MMMM yyyy", { locale: ptBR })}
         </span>
       )
     }
 
     return (
-      <div className="flex items-center justify-between mb-4 px-2">
-        <div className="flex items-center gap-2 overflow-hidden">
-          <Button variant="outline" size="icon" onClick={goToBack}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" onClick={goToCurrent}>
-            Hoje
-          </Button>
-          <Button variant="outline" size="icon" onClick={goToNext}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <div className="ml-4 truncate">{label()}</div>
+      <div className="flex flex-col gap-3 mb-4 px-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={goToBack}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" className="h-8 px-2 sm:h-9 sm:px-3 text-sm" onClick={goToCurrent}>
+              Hoje
+            </Button>
+            <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={goToNext}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="min-w-0 flex-1 text-right sm:text-left sm:ml-2">{label()}</div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-2">
           {barbers.length > 0 && (
             <select
               value={filterBarberId}
               onChange={(e) => setFilterBarberId(e.target.value)}
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-8 sm:h-9 flex-1 sm:flex-none rounded-md border border-input bg-background px-2 sm:px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <option value="">Todos os barbeiros</option>
               {barbers.map((barber: any) => (
@@ -176,10 +178,10 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
             </select>
           )}
 
-          <div className="flex bg-gray-100 p-1 rounded-lg">
+          <div className="flex bg-gray-100 p-1 rounded-lg shrink-0">
             <button
               onClick={() => toolbar.onView(Views.DAY)}
-              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+              className={`px-2 sm:px-3 py-1 rounded-md text-sm font-medium transition-colors ${
                 view === Views.DAY ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'
               }`}
             >
@@ -187,7 +189,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
             </button>
             <button
               onClick={() => toolbar.onView(Views.WEEK)}
-              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+              className={`px-2 sm:px-3 py-1 rounded-md text-sm font-medium transition-colors ${
                 view === Views.WEEK ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'
               }`}
             >
@@ -213,7 +215,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
   }
 
   return (
-    <div className="h-[calc(100vh-140px)] min-h-[600px] bg-white p-6 rounded-xl shadow-sm border flex flex-col overflow-hidden">
+    <div className="h-[calc(100vh-200px)] sm:h-[calc(100vh-140px)] min-h-[500px] sm:min-h-[600px] bg-white p-3 sm:p-6 rounded-xl shadow-sm border flex flex-col overflow-hidden">
       <div className="flex justify-between items-center mb-2 flex-shrink-0">
          <h2 className="text-xl font-bold hidden">Calendário</h2>
          <CreateAppointmentDialog 
