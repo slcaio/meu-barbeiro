@@ -6,6 +6,7 @@ import { AddTransactionDialog } from './add-transaction-dialog'
 import { TransactionList } from './transaction-list'
 import { FinancialFilters } from './financial-filters'
 import { CommissionReportDialog } from './commission-report-dialog'
+import { StatementReportDialog } from './statement-report-dialog'
 
 type SearchParams = {
   from?: string
@@ -27,6 +28,41 @@ async function getFinancialData(searchParams: SearchParams) {
     .single()
 
   if (!barbershop) redirect('/setup/wizard')
+
+  // Fetch categories from categories table
+  const { data: dbCategories } = await supabase
+    .from('categories')
+    .select('*')
+    .eq('barbershop_id', barbershop.id)
+    .order('name')
+
+  // Fetch distinct categories already used in financial_records
+  const { data: usedRecords } = await supabase
+    .from('financial_records')
+    .select('category, type')
+    .eq('barbershop_id', barbershop.id)
+
+  // Merge: start with categories table entries, then add any used categories not yet in the table
+  const categorySet = new Set((dbCategories || []).map(c => `${c.name}::${c.type}`))
+  const mergedCategories = [...(dbCategories || [])]
+
+  if (usedRecords) {
+    for (const record of usedRecords) {
+      const key = `${record.category}::${record.type}`
+      if (!categorySet.has(key)) {
+        categorySet.add(key)
+        mergedCategories.push({
+          id: `used-${record.category}-${record.type}`,
+          barbershop_id: barbershop.id,
+          name: record.category,
+          type: record.type as 'income' | 'expense',
+          created_at: '',
+        })
+      }
+    }
+  }
+
+  mergedCategories.sort((a, b) => a.name.localeCompare(b.name))
 
   // Date Filtering
   const date = new Date()
@@ -95,13 +131,14 @@ async function getFinancialData(searchParams: SearchParams) {
       expenses,
       netProfit
     },
-    transactions: allTransactions
+    transactions: allTransactions,
+    categories: mergedCategories,
   }
 }
 
 export default async function FinancialPage(props: { searchParams: Promise<SearchParams> }) {
   const searchParams = await props.searchParams
-  const { summary, transactions } = await getFinancialData(searchParams)
+  const { summary, transactions, categories } = await getFinancialData(searchParams)
 
   return (
     <div className="space-y-6">
@@ -114,11 +151,12 @@ export default async function FinancialPage(props: { searchParams: Promise<Searc
         </div>
         <div className="flex flex-wrap gap-2">
           <CommissionReportDialog />
-          <AddTransactionDialog />
+          <StatementReportDialog transactions={transactions} summary={summary} />
+          <AddTransactionDialog categories={categories} />
         </div>
       </div>
 
-      <FinancialFilters />
+      <FinancialFilters categories={categories} />
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-3">

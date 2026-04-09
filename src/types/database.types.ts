@@ -355,6 +355,37 @@ export interface Database {
           }
         ]
       }
+      categories: {
+        Row: {
+          id: string
+          barbershop_id: string
+          name: string
+          type: 'income' | 'expense'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          barbershop_id: string
+          name: string
+          type: 'income' | 'expense'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          barbershop_id?: string
+          name?: string
+          type?: 'income' | 'expense'
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categories_barbershop_id_fkey"
+            columns: ["barbershop_id"]
+            referencedRelation: "barbershops"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       financial_records: {
         Row: {
           id: string

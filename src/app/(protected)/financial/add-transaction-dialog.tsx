@@ -9,15 +9,18 @@ import { Label } from '@/components/ui/label'
 import { createTransaction } from '@/app/financial/actions'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
 
-export function AddTransactionDialog() {
+interface Category {
+  id: string
+  name: string
+  type: 'income' | 'expense'
+}
+
+export function AddTransactionDialog({ categories: allCategories }: { categories: Category[] }) {
   const [isOpen, setIsOpen] = useState(false)
   const [type, setType] = useState<'income' | 'expense'>('expense')
   const [amount, setAmount] = useState('')
 
-  const INCOME_CATEGORIES = ['Serviço', 'Produto', 'Outros']
-  const EXPENSE_CATEGORIES = ['Aluguel', 'Contas (Água/Luz/Internet)', 'Impostos', 'Produtos', 'Salário', 'Manutenção', 'Marketing', 'Comissão', 'Outros']
-
-  const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
+  const categories = allCategories.filter(c => c.type === type).map(c => c.name)
 
   const handleOpen = (newType: 'income' | 'expense') => {
     setType(newType)

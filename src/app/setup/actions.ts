@@ -95,5 +95,29 @@ export async function createBarbershop(prevState: any, formData: FormData) {
     console.error('Error creating default payment methods:', paymentMethodsError)
   }
 
+  // Create default categories
+  const defaultCategories: { barbershop_id: string; name: string; type: 'income' | 'expense' }[] = [
+    { barbershop_id: barbershop.id, name: 'Serviço', type: 'income' },
+    { barbershop_id: barbershop.id, name: 'Produto', type: 'income' },
+    { barbershop_id: barbershop.id, name: 'Outros', type: 'income' },
+    { barbershop_id: barbershop.id, name: 'Aluguel', type: 'expense' },
+    { barbershop_id: barbershop.id, name: 'Contas (Água/Luz/Internet)', type: 'expense' },
+    { barbershop_id: barbershop.id, name: 'Impostos', type: 'expense' },
+    { barbershop_id: barbershop.id, name: 'Produtos', type: 'expense' },
+    { barbershop_id: barbershop.id, name: 'Salário', type: 'expense' },
+    { barbershop_id: barbershop.id, name: 'Manutenção', type: 'expense' },
+    { barbershop_id: barbershop.id, name: 'Marketing', type: 'expense' },
+    { barbershop_id: barbershop.id, name: 'Comissão', type: 'expense' },
+    { barbershop_id: barbershop.id, name: 'Outros', type: 'expense' },
+  ]
+
+  const { error: categoriesError } = await supabase
+    .from('categories')
+    .insert(defaultCategories)
+
+  if (categoriesError) {
+    console.error('Error creating default categories:', categoriesError)
+  }
+
   redirect('/dashboard')
 }

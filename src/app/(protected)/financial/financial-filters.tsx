@@ -23,7 +23,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-export function FinancialFilters() {
+interface Category {
+  id: string
+  name: string
+  type: 'income' | 'expense'
+}
+
+export function FinancialFilters({ categories }: { categories: Category[] }) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -181,18 +187,16 @@ export function FinancialFilters() {
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium">Categoria</span>
         <Select value={currentCategory} onValueChange={handleCategoryChange}>
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Categoria" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas</SelectItem>
-            <SelectItem value="Serviço">Serviço</SelectItem>
-            <SelectItem value="Produto">Produto</SelectItem>
-            <SelectItem value="Aluguel">Aluguel</SelectItem>
-            <SelectItem value="Contas">Contas</SelectItem>
-            <SelectItem value="Salário">Salário</SelectItem>
-            <SelectItem value="Marketing">Marketing</SelectItem>
-            <SelectItem value="Outros">Outros</SelectItem>
+            {categories.map((cat) => (
+              <SelectItem key={cat.id} value={cat.name}>
+                {cat.name}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

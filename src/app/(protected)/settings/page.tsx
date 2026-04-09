@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { CreditCard, Scissors, Store, User, Users } from 'lucide-react'
+import { CreditCard, Scissors, Store, Tag, User, Users } from 'lucide-react'
 
 export default function SettingsPage() {
   const settingsModules = [
@@ -21,6 +21,12 @@ export default function SettingsPage() {
       description: 'Gerencie formas de pagamento e taxas.',
       href: '/settings/payment-methods',
       icon: CreditCard,
+    },
+    {
+      title: 'Categorias',
+      description: 'Gerencie categorias de receitas e despesas.',
+      href: '/settings/categories',
+      icon: Tag,
     },
     {
       title: 'Barbearia',
