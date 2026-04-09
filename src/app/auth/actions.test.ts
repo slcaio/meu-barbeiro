@@ -9,7 +9,7 @@ vi.mock('next/cache', () => ({
 // Mock next/navigation
 const mockRedirect = vi.fn()
 vi.mock('next/navigation', () => ({
-  redirect: (...args: any[]) => {
+  redirect: (...args: string[]) => {
     mockRedirect(...args)
     throw new Error('NEXT_REDIRECT')
   },

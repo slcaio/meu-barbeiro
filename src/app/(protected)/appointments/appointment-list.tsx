@@ -5,14 +5,15 @@ import { updateAppointmentStatus } from '@/app/appointments/actions'
 import { Check, X, Clock } from 'lucide-react'
 import { useTransition, useState } from 'react'
 import { AppointmentPOSDialog } from './appointment-pos-dialog'
+import type { AppointmentWithRelations, PaymentMethodOption } from '@/types/database.types'
 
-export function AppointmentList({ appointments, paymentMethods = [] }: { appointments: any[]; paymentMethods?: any[] }) {
+export function AppointmentList({ appointments, paymentMethods = [] }: { appointments: AppointmentWithRelations[]; paymentMethods?: PaymentMethodOption[] }) {
   const [isPending, startTransition] = useTransition()
   const [posOpen, setPosOpen] = useState(false)
-  const [selectedAppointment, setSelectedAppointment] = useState<any>(null)
+  const [selectedAppointment, setSelectedAppointment] = useState<AppointmentWithRelations | null>(null)
   const [posAction, setPosAction] = useState<'complete' | 'cancel'>('complete')
 
-  const handleStatusUpdate = (apt: any, status: 'confirmed' | 'completed' | 'cancelled') => {
+  const handleStatusUpdate = (apt: AppointmentWithRelations, status: 'confirmed' | 'completed' | 'cancelled') => {
     if (status === 'completed' || status === 'cancelled') {
       setSelectedAppointment(apt)
       setPosAction(status === 'completed' ? 'complete' : 'cancel')
@@ -94,7 +95,7 @@ export function AppointmentList({ appointments, paymentMethods = [] }: { appoint
         </div>
       ))}
       <AppointmentPOSDialog 
-        appointment={selectedAppointment}
+        appointment={selectedAppointment!}
         isOpen={posOpen}
         onOpenChange={setPosOpen}
         action={posAction}

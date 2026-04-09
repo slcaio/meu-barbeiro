@@ -450,3 +450,28 @@ export interface Database {
     }
   }
 }
+
+// Convenience type aliases
+export type Service = Database['public']['Tables']['services']['Row']
+export type Client = Database['public']['Tables']['clients']['Row']
+export type Barber = Database['public']['Tables']['barbers']['Row']
+export type PaymentMethod = Database['public']['Tables']['payment_methods']['Row']
+export type AppointmentRow = Database['public']['Tables']['appointments']['Row']
+export type FinancialRecord = Database['public']['Tables']['financial_records']['Row']
+export type Category = Database['public']['Tables']['categories']['Row']
+export type Barbershop = Database['public']['Tables']['barbershops']['Row']
+
+// Partial types matching common select queries
+export type ServiceOption = Pick<Service, 'id' | 'name' | 'price' | 'duration_minutes'>
+export type ClientOption = Pick<Client, 'id' | 'name' | 'phone' | 'email'>
+export type BarberOption = Pick<Barber, 'id' | 'name' | 'is_active'>
+export type PaymentMethodOption = Pick<PaymentMethod, 'id' | 'name' | 'fee_type' | 'fee_value'>
+
+// Appointment with joined relations (from select with joins)
+export type AppointmentWithRelations = AppointmentRow & {
+  services: Pick<Service, 'name' | 'duration_minutes' | 'price'> | null
+  barbers: Pick<Barber, 'id' | 'name'> | null
+}
+
+// Server action state (used with useActionState)
+export type ActionState = { error?: string | null; success?: string } | null

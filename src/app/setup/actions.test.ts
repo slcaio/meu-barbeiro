@@ -3,7 +3,7 @@ import { createFormData } from '@/__tests__/helpers'
 
 const mockRedirect = vi.fn()
 vi.mock('next/navigation', () => ({
-  redirect: (...args: any[]) => {
+  redirect: (...args: string[]) => {
     mockRedirect(...args)
     throw new Error('NEXT_REDIRECT')
   },
@@ -21,8 +21,8 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(() => Promise.resolve(mockSupabase)),
 }))
 
-function mockChain(data: any = null, error: any = null) {
-  const chain: any = {
+function mockChain(data: unknown = null, error: unknown = null) {
+  const chain = {
     select: vi.fn().mockReturnThis(),
     insert: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
@@ -81,11 +81,11 @@ describe('Setup Actions', () => {
         }),
       })
 
-      const serviceChain: any = {
+      const serviceChain = {
         insert: vi.fn().mockResolvedValue({ error: null }),
       }
 
-      const paymentMethodsChain: any = {
+      const paymentMethodsChain = {
         insert: vi.fn().mockResolvedValue({ error: null }),
       }
 
@@ -112,12 +112,12 @@ describe('Setup Actions', () => {
 
       // Verifica que métodos de pagamento padrão foram inseridos
       expect(paymentMethodsChain.insert).toHaveBeenCalledTimes(1)
-      const insertedMethods = paymentMethodsChain.insert.mock.calls[0][0]
+      const insertedMethods = paymentMethodsChain.insert.mock.calls[0][0] as Array<{ name: string; barbershop_id: string }>
       expect(insertedMethods).toHaveLength(4)
-      expect(insertedMethods.map((m: any) => m.name)).toEqual([
+      expect(insertedMethods.map((m) => m.name)).toEqual([
         'Dinheiro', 'Pix', 'Cartão de Crédito', 'Cartão de Débito',
       ])
-      expect(insertedMethods.every((m: any) => m.barbershop_id === 'barbershop-1')).toBe(true)
+      expect(insertedMethods.every((m) => m.barbershop_id === 'barbershop-1')).toBe(true)
     })
 
     it('redireciona mesmo quando métodos de pagamento falham', async () => {
@@ -133,11 +133,11 @@ describe('Setup Actions', () => {
         }),
       })
 
-      const serviceChain: any = {
+      const serviceChain = {
         insert: vi.fn().mockResolvedValue({ error: null }),
       }
 
-      const paymentMethodsChain: any = {
+      const paymentMethodsChain = {
         insert: vi.fn().mockResolvedValue({ error: { message: 'insert failed' } }),
       }
 

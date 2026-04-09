@@ -1,8 +1,8 @@
 import { vi } from 'vitest'
 
-export function createMockSupabaseClient(overrides: Record<string, any> = {}) {
+export function createMockSupabaseClient(overrides: Record<string, ReturnType<typeof vi.fn>> = {}) {
   const mockChain = () => {
-    const chain: any = {
+    const chain = {
       select: vi.fn().mockReturnThis(),
       insert: vi.fn().mockReturnThis(),
       update: vi.fn().mockReturnThis(),

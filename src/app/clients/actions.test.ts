@@ -17,8 +17,8 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(() => Promise.resolve(mockSupabase)),
 }))
 
-function mockChain(data: any = null, error: any = null) {
-  const chain: any = {
+function mockChain(data: unknown = null, error: unknown = null) {
+  const chain = {
     select: vi.fn().mockReturnThis(),
     insert: vi.fn().mockReturnThis(),
     update: vi.fn().mockReturnThis(),
@@ -65,7 +65,7 @@ describe('Clients Actions', () => {
         { id: '2', name: 'Maria', phone: '11888888888' },
       ]
       const barbershopChain = mockChain({ id: 'barbershop-1' })
-      const clientsChain: any = {
+      const clientsChain = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
         order: vi.fn().mockResolvedValue({ data: clients, error: null }),
@@ -102,7 +102,7 @@ describe('Clients Actions', () => {
       })
       
       const barbershopChain = mockChain({ id: 'barbershop-1' })
-      const insertChain: any = {
+      const insertChain = {
         insert: vi.fn().mockResolvedValue({ error: null }),
       }
 
@@ -124,7 +124,7 @@ describe('Clients Actions', () => {
 
   describe('deleteClient', () => {
     it('exclui cliente com sucesso', async () => {
-      const deleteChain: any = {
+      const deleteChain = {
         delete: vi.fn().mockReturnThis(),
         eq: vi.fn().mockResolvedValue({ error: null }),
       }
@@ -136,7 +136,7 @@ describe('Clients Actions', () => {
     })
 
     it('retorna erro ao falhar exclusão', async () => {
-      const deleteChain: any = {
+      const deleteChain = {
         delete: vi.fn().mockReturnThis(),
         eq: vi.fn().mockResolvedValue({ error: { message: 'FK constraint' } }),
       }

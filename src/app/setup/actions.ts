@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
+import type { ActionState } from '@/types/database.types'
 
 const barbershopSchema = z.object({
   name: z.string().min(2, 'Nome da barbearia deve ter pelo menos 2 caracteres'),
@@ -14,7 +15,7 @@ const barbershopSchema = z.object({
   number: z.string().min(1, 'Número é obrigatório'),
 })
 
-export async function createBarbershop(prevState: any, formData: FormData) {
+export async function createBarbershop(prevState: ActionState, formData: FormData) {
   const rawData = {
     name: formData.get('name') as string,
     phone: formData.get('phone') as string,

@@ -17,8 +17,8 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(() => Promise.resolve(mockSupabase)),
 }))
 
-function mockChain(data: any = null, error: any = null) {
-  const chain: any = {
+function mockChain(data: unknown = null, error: unknown = null) {
+  const chain = {
     select: vi.fn().mockReturnThis(),
     insert: vi.fn().mockReturnThis(),
     update: vi.fn().mockReturnThis(),
@@ -192,12 +192,12 @@ describe('Appointments Actions', () => {
         data: { user: { id: 'user-123' } },
       })
 
-      const updateChain: any = {
+      const updateChain = {
         update: vi.fn().mockReturnThis(),
         eq: vi.fn().mockResolvedValue({ error: null }),
       }
       const barbershopChain = mockChain({ id: 'barbershop-1' })
-      const insertChain: any = {
+      const insertChain = {
         insert: vi.fn().mockResolvedValue({ error: null }),
       }
       const paymentMethodChain = mockChain({ name: 'Cartão de Crédito', fee_type: 'percentage', fee_value: 3 })
@@ -237,12 +237,12 @@ describe('Appointments Actions', () => {
         data: { user: { id: 'user-123' } },
       })
 
-      const updateChain: any = {
+      const updateChain = {
         update: vi.fn().mockReturnThis(),
         eq: vi.fn().mockResolvedValue({ error: null }),
       }
       const barbershopChain = mockChain({ id: 'barbershop-1' })
-      const insertChain: any = {
+      const insertChain = {
         insert: vi.fn().mockResolvedValue({ error: null }),
       }
       const paymentMethodChain = mockChain({ name: 'Dinheiro', fee_type: 'percentage', fee_value: 0 })
@@ -281,12 +281,12 @@ describe('Appointments Actions', () => {
         data: { user: { id: 'user-123' } },
       })
 
-      const updateChain: any = {
+      const updateChain = {
         update: vi.fn().mockReturnThis(),
         eq: vi.fn().mockResolvedValue({ error: null }),
       }
       const barbershopChain = mockChain({ id: 'barbershop-1' })
-      const insertChain: any = {
+      const insertChain = {
         insert: vi.fn().mockResolvedValue({ error: null }),
       }
       const paymentMethodChain = mockChain({ name: 'Taxa Fixa', fee_type: 'fixed', fee_value: 2.5 })
@@ -325,7 +325,7 @@ describe('Appointments Actions', () => {
         data: { user: { id: 'user-123' } },
       })
 
-      const updateChain: any = {
+      const updateChain = {
         update: vi.fn().mockReturnThis(),
         eq: vi.fn().mockResolvedValue({ error: null }),
       }
@@ -348,12 +348,12 @@ describe('Appointments Actions', () => {
         data: { user: { id: 'user-123' } },
       })
 
-      const updateChain: any = {
+      const updateChain = {
         update: vi.fn().mockReturnThis(),
         eq: vi.fn().mockResolvedValue({ error: null }),
       }
       const barbershopChain = mockChain({ id: 'barbershop-1' })
-      const insertChain: any = {
+      const insertChain = {
         insert: vi.fn().mockResolvedValue({ error: null }),
       }
       const paymentMethodChain = mockChain({ name: 'Crédito', fee_type: 'percentage', fee_value: 3 })

@@ -11,6 +11,7 @@ import { updateAppointmentDate } from '@/app/appointments/actions'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import type { AppointmentWithRelations, ServiceOption, ClientOption, BarberOption, PaymentMethodOption } from '@/types/database.types'
 
 const locales = {
   'pt-BR': ptBR,
@@ -32,18 +33,18 @@ interface CalendarEvent {
   title: string
   start: Date
   end: Date
-  resource: any
+  resource: AppointmentWithRelations
   status: string
 }
 
 const DnDCalendar = withDragAndDrop<CalendarEvent>(Calendar)
 
 interface AppointmentsCalendarViewProps {
-  appointments: any[]
-  services: any[]
-  clients: any[]
-  barbers: any[]
-  paymentMethods: any[]
+  appointments: AppointmentWithRelations[]
+  services: ServiceOption[]
+  clients: ClientOption[]
+  barbers: BarberOption[]
+  paymentMethods: PaymentMethodOption[]
 }
 
 export function AppointmentsCalendarView({ appointments, services, clients, barbers, paymentMethods }: AppointmentsCalendarViewProps) {
@@ -52,7 +53,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
   const [date, setDate] = useState(new Date())
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
-  const [selectedEvent, setSelectedEvent] = useState<any>(null)
+  const [selectedEvent, setSelectedEvent] = useState<AppointmentWithRelations | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [isPending, startTransition] = useTransition()
   const [filterBarberId, setFilterBarberId] = useState<string>('')
@@ -83,15 +84,16 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
     setIsDialogOpen(true)
   }, [])
 
-  const onSelectEvent = useCallback((event: any) => {
+  const onSelectEvent = useCallback((event: CalendarEvent) => {
     setSelectedEvent(event.resource)
     setIsDetailsOpen(true)
   }, [])
 
-  const onEventDrop = useCallback(({ event, start, end }: any) => {
+  const onEventDrop = useCallback(({ event, start }: { event: CalendarEvent; start: string | Date }) => {
     // Optimistic update logic could go here, but for now relying on revalidation
     startTransition(async () => {
-       const result = await updateAppointmentDate(event.id, start.toISOString())
+       const newDate = typeof start === 'string' ? start : start.toISOString()
+       const result = await updateAppointmentDate(event.id, newDate)
        if (result.error) {
          alert(result.error)
        }
@@ -108,7 +110,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
     }
   }
 
-  const eventStyleGetter = (event: any) => {
+  const eventStyleGetter = (event: CalendarEvent) => {
     let backgroundColor = '#3174ad'
     if (event.status === 'confirmed') backgroundColor = '#10B981' // green-500
     if (event.status === 'completed') backgroundColor = '#10B981' // green-500
@@ -127,7 +129,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
     }
   }
 
-  const CustomToolbar = (toolbar: any) => {
+  const CustomToolbar = (toolbar: { date: Date; onNavigate: (action: 'PREV' | 'NEXT' | 'TODAY') => void; onView: (view: View) => void }) => {
     const goToBack = () => {
       toolbar.onNavigate('PREV')
     }
@@ -172,7 +174,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
               className="h-8 sm:h-9 flex-1 sm:flex-none rounded-md border border-input bg-background px-2 sm:px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <option value="">Todos os barbeiros</option>
-              {barbers.map((barber: any) => (
+              {barbers.map((barber) => (
                 <option key={barber.id} value={barber.id}>{barber.name}</option>
               ))}
             </select>
@@ -201,7 +203,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
     )
   }
 
-  const CustomEvent = ({ event }: any) => {
+  const CustomEvent = ({ event }: { event: CalendarEvent }) => {
     return (
       <div className="flex flex-col h-full overflow-hidden leading-tight">
         <div className="text-xs font-semibold mb-0.5">
@@ -263,7 +265,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
         />
         
         <AppointmentDetailsDialog
-          appointment={selectedEvent}
+          appointment={selectedEvent!}
           isOpen={isDetailsOpen}
           onOpenChange={setIsDetailsOpen}
           paymentMethods={paymentMethods}

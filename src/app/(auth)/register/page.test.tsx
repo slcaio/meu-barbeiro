@@ -2,20 +2,20 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 vi.mock('next/link', () => ({
-  default: ({ children, href }: any) => <a href={href}>{children}</a>,
+  default: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a>,
 }))
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/register',
-  useActionState: (action: any, initial: any) => [initial, vi.fn(), false],
+  useActionState: (action: unknown, initial: unknown) => [initial, vi.fn(), false],
 }))
 
 vi.mock('react', async () => {
   const actual = await vi.importActual('react')
   return {
     ...actual,
-    useActionState: (action: any, initial: any) => [initial, vi.fn(), false],
+    useActionState: (action: unknown, initial: unknown) => [initial, vi.fn(), false],
     useTransition: () => [false, vi.fn()],
   }
 })

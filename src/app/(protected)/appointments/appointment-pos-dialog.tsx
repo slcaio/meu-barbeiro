@@ -8,13 +8,14 @@ import { Label } from '@/components/ui/label'
 import { completeAppointmentWithTransaction } from '@/app/appointments/actions'
 import { Loader2 } from 'lucide-react'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
+import type { AppointmentWithRelations, PaymentMethodOption } from '@/types/database.types'
 
 interface AppointmentPOSDialogProps {
-  appointment: any
+  appointment: AppointmentWithRelations
   isOpen: boolean
   onOpenChange: (open: boolean) => void
   action: 'complete' | 'cancel'
-  paymentMethods: any[]
+  paymentMethods: PaymentMethodOption[]
 }
 
 export function AppointmentPOSDialog({
@@ -165,7 +166,7 @@ export function AppointmentPOSDialog({
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <option value="">Selecione...</option>
-              {paymentMethods.map((pm: any) => (
+              {paymentMethods.map((pm) => (
                 <option key={pm.id} value={pm.id}>
                   {pm.name}{pm.fee_value > 0 ? ` (${pm.fee_type === 'percentage' ? `${pm.fee_value}%` : `R$ ${pm.fee_value.toFixed(2)}`})` : ''}
                 </option>

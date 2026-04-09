@@ -17,8 +17,8 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(() => Promise.resolve(mockSupabase)),
 }))
 
-function mockChain(data: any = null, error: any = null) {
-  const chain: any = {
+function mockChain(data: unknown = null, error: unknown = null) {
+  const chain = {
     select: vi.fn().mockReturnThis(),
     insert: vi.fn().mockReturnThis(),
     delete: vi.fn().mockReturnThis(),
@@ -66,7 +66,7 @@ describe('Settings Actions', () => {
       })
 
       const barbershopChain = mockChain({ id: 'barbershop-1' })
-      const insertChain: any = {
+      const insertChain = {
         insert: vi.fn().mockResolvedValue({ error: null }),
       }
 
@@ -117,7 +117,7 @@ describe('Settings Actions', () => {
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: { id: 'user-123' } },
       })
-      const chain: any = {
+      const chain = {
         delete: vi.fn().mockReturnThis(),
         eq: vi.fn().mockResolvedValue({ error: null }),
       }
@@ -132,7 +132,7 @@ describe('Settings Actions', () => {
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: { id: 'user-123' } },
       })
-      const chain: any = {
+      const chain = {
         delete: vi.fn().mockReturnThis(),
         eq: vi.fn().mockResolvedValue({ error: { message: 'DB error' } }),
       }
