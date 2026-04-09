@@ -11,7 +11,13 @@ export function ThemeToggle() {
     <Button
       variant="ghost"
       size="icon"
-      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+      onClick={() => {
+        document.documentElement.classList.add('theme-transitioning')
+        setTheme(theme === 'dark' ? 'light' : 'dark')
+        setTimeout(() => {
+          document.documentElement.classList.remove('theme-transitioning')
+        }, 500)
+      }}
       className="h-9 w-9 text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
       aria-label="Alternar tema"
     >

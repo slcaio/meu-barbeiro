@@ -85,6 +85,7 @@
   --warning: #f59e0b;
   --warning-foreground: #ffffff;
   --border: #e2e8f0;
+  --border-transition: #64748b; /* cor intermediária para transição */
   --input: #e2e8f0;
   --ring: #2563eb;
   --radius: 0.625rem;
@@ -126,6 +127,7 @@
   --warning: #fbbf24;
   --warning-foreground: #0f172a;
   --border: rgba(255, 255, 255, 0.08);
+  --border-transition: #334155; /* cor intermediária escura para transição */
   --input: rgba(255, 255, 255, 0.12);
   --ring: #3b82f6;
   --chart-1: #3b82f6;
@@ -145,10 +147,22 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply outline-ring/50;
+    border-color: var(--border);
   }
   body {
     @apply bg-background text-foreground;
+  }
+  html.theme-transitioning *,
+  html.theme-transitioning *::before,
+  html.theme-transitioning *::after {
+    transition: background-color 500ms ease-in-out, color 500ms ease-in-out,
+      box-shadow 500ms ease-in-out, fill 500ms ease-in-out, stroke 500ms ease-in-out !important;
+    border-color: var(--border-transition) !important;
+  }
+  html.theme-transitioning {
+    /* Força borda intermediária em elementos root também */
+    --border: var(--border-transition) !important;
   }
 }
 
