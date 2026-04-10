@@ -65,7 +65,7 @@ export function ClientList({ clients }: { clients: Client[] }) {
                 <tr key={client.id} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
                   <td className="p-4 align-middle">
                     <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
+                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
                           {client.name.charAt(0).toUpperCase()}
                         </div>
                         <span className="font-medium">{client.name}</span>
@@ -77,7 +77,7 @@ export function ClientList({ clients }: { clients: Client[] }) {
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="text-gray-400 hover:text-red-600 hover:bg-red-50 h-8 w-8"
+                      className="text-muted-foreground hover:text-red-600 hover:bg-red-500/10 h-8 w-8"
                       onClick={() => handleDelete(client.id)}
                       disabled={isPending}
                     >

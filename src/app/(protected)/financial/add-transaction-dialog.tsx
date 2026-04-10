@@ -1,27 +1,65 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
-import { Plus } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { createTransaction } from '@/app/financial/actions'
+import { DatePicker } from '@/components/ui/date-picker'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
+import { createTransaction } from '@/app/financial/actions'
 
-export function AddTransactionDialog() {
-  const [isOpen, setIsOpen] = useState(false)
-  const [type, setType] = useState<'income' | 'expense'>('expense')
+interface Category {
+  id: string
+  name: string
+  type: 'income' | 'expense'
+}
+
+interface AddTransactionDialogProps {
+  categories: Category[]
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+  initialType?: 'income' | 'expense'
+}
+
+export function AddTransactionDialog({ categories: allCategories, isOpen: externalIsOpen, onOpenChange, initialType }: AddTransactionDialogProps) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false)
+
+  const isControlled = typeof externalIsOpen !== 'undefined'
+  const isOpen = isControlled ? externalIsOpen : internalIsOpen
+  const setIsOpen = (open: boolean) => {
+    if (isControlled) {
+      onOpenChange?.(open)
+    } else {
+      setInternalIsOpen(open)
+    }
+  }
+
+  const [type, setType] = useState<'income' | 'expense'>(initialType || 'expense')
   const [amount, setAmount] = useState('')
+  const [categoryValue, setCategoryValue] = useState('')
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
 
-  const INCOME_CATEGORIES = ['Serviço', 'Produto', 'Outros']
-  const EXPENSE_CATEGORIES = ['Aluguel', 'Contas (Água/Luz/Internet)', 'Impostos', 'Produtos', 'Salário', 'Manutenção', 'Marketing', 'Outros']
+  useEffect(() => {
+    if (initialType) {
+      setType(initialType)
+    }
+  }, [initialType])
 
-  const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
+  const categories = allCategories.filter(c => c.type === type).map(c => c.name)
 
   const handleOpen = (newType: 'income' | 'expense') => {
     setType(newType)
     setAmount('')
+    setCategoryValue('')
+    setSelectedDate(new Date())
     setIsOpen(true)
   }
 
@@ -42,12 +80,24 @@ export function AddTransactionDialog() {
     // Parse amount from "R$ 10,00" to "10.00"
     const rawAmount = parseCurrency(amount)
     formData.set('amount', rawAmount.toString())
+
+    // Set category from controlled state
+    if (categoryValue) {
+      formData.set('category', categoryValue)
+    }
+
+    // Set date from calendar
+    if (selectedDate) {
+      formData.set('record_date', selectedDate.toISOString().split('T')[0])
+    }
     
     const result = await createTransaction(formData)
     
     if (result?.success) {
       setIsOpen(false)
       setAmount('')
+      setCategoryValue('')
+      setSelectedDate(new Date())
     } else if (result?.error) {
       alert(result.error)
     }
@@ -55,40 +105,42 @@ export function AddTransactionDialog() {
 
   return (
     <>
-      <div className="flex gap-2">
-        <Button variant="outline" onClick={() => handleOpen('income')} className="text-green-600 border-green-200 hover:bg-green-50">
-          <Plus className="mr-2 h-4 w-4" /> Receita Extra
-        </Button>
-        <Button variant="destructive" onClick={() => handleOpen('expense')}>
-          <Plus className="mr-2 h-4 w-4" /> Nova Despesa
-        </Button>
-      </div>
+      {!isControlled && (
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => handleOpen('income')} className="text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20 hover:bg-emerald-500/10">
+            <Plus className="mr-2 h-4 w-4" /> Receita Extra
+          </Button>
+          <Button variant="destructive" onClick={() => handleOpen('expense')}>
+            <Plus className="mr-2 h-4 w-4" /> Nova Despesa
+          </Button>
+        </div>
+      )}
 
       <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title={type === 'income' ? 'Registrar Receita Extra' : 'Registrar Despesa'}>
         <form action={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="category">Categoria</Label>
-            <select
-              id="category"
-              name="category"
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-              required
-            >
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Categoria</span>
+            <Select value={categoryValue} onValueChange={setCategoryValue}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Selecione uma categoria" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Descrição</Label>
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Descrição</span>
             <Input id="description" name="description" placeholder={type === 'income' ? "Ex: Venda de produto" : "Ex: Conta de luz"} required />
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="amount">Valor</Label>
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Valor</span>
             <Input 
               id="amount" 
               name="amount" 
@@ -101,15 +153,9 @@ export function AddTransactionDialog() {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="record_date">Data</Label>
-            <Input 
-              id="record_date" 
-              name="record_date" 
-              type="date" 
-              required 
-              defaultValue={new Date().toISOString().split('T')[0]}
-            />
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Data</span>
+            <DatePicker value={selectedDate} onChange={setSelectedDate} />
           </div>
 
           <div className="pt-4 flex justify-end space-x-2">

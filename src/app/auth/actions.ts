@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
+import type { ActionState } from '@/types/database.types'
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -15,7 +16,7 @@ const registerSchema = z.object({
   name: z.string().min(2),
 })
 
-export async function login(prevState: any, formData: FormData) {
+export async function login(prevState: ActionState, formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 
@@ -39,7 +40,7 @@ export async function login(prevState: any, formData: FormData) {
   redirect('/dashboard')
 }
 
-export async function signup(prevState: any, formData: FormData) {
+export async function signup(prevState: ActionState, formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
   const name = formData.get('name') as string
@@ -71,7 +72,7 @@ export async function signup(prevState: any, formData: FormData) {
   return { success: 'Conta criada com sucesso! Verifique seu email para confirmar.' }
 }
 
-export async function recoverPassword(prevState: any, formData: FormData) {
+export async function recoverPassword(prevState: ActionState, formData: FormData) {
   const email = formData.get('email') as string
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {

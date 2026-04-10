@@ -169,6 +169,58 @@ export interface Database {
           }
         ]
       }
+      barbers: {
+        Row: {
+          id: string
+          barbershop_id: string
+          name: string
+          phone: string | null
+          email: string | null
+          role: string
+          avatar_url: string | null
+          commission_percentage: number
+          is_active: boolean
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          barbershop_id: string
+          name: string
+          phone?: string | null
+          email?: string | null
+          role?: string
+          avatar_url?: string | null
+          commission_percentage?: number
+          is_active?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          barbershop_id?: string
+          name?: string
+          phone?: string | null
+          email?: string | null
+          role?: string
+          avatar_url?: string | null
+          commission_percentage?: number
+          is_active?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "barbers_barbershop_id_fkey"
+            columns: ["barbershop_id"]
+            referencedRelation: "barbershops"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       appointments: {
         Row: {
           id: string
@@ -176,6 +228,9 @@ export interface Database {
           service_id: string
           user_id: string
           client_id: string | null
+          barber_id: string | null
+          payment_method_id: string | null
+          installments: number
           client_name: string
           client_phone: string
           appointment_date: string
@@ -192,6 +247,9 @@ export interface Database {
           service_id: string
           user_id: string
           client_id?: string | null
+          barber_id?: string | null
+          payment_method_id?: string | null
+          installments?: number
           client_name: string
           client_phone: string
           appointment_date: string
@@ -208,6 +266,9 @@ export interface Database {
           service_id?: string
           user_id?: string
           client_id?: string | null
+          barber_id?: string | null
+          payment_method_id?: string | null
+          installments?: number
           client_name?: string
           client_phone?: string
           appointment_date?: string
@@ -242,6 +303,123 @@ export interface Database {
             columns: ["user_id"]
             referencedRelation: "users"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_barber_id_fkey"
+            columns: ["barber_id"]
+            referencedRelation: "barbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      payment_methods: {
+        Row: {
+          id: string
+          barbershop_id: string
+          name: string
+          fee_type: 'percentage' | 'fixed'
+          fee_value: number
+          supports_installments: boolean
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          barbershop_id: string
+          name: string
+          fee_type?: 'percentage' | 'fixed'
+          fee_value?: number
+          supports_installments?: boolean
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          barbershop_id?: string
+          name?: string
+          fee_type?: 'percentage' | 'fixed'
+          fee_value?: number
+          supports_installments?: boolean
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_methods_barbershop_id_fkey"
+            columns: ["barbershop_id"]
+            referencedRelation: "barbershops"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      payment_method_installments: {
+        Row: {
+          id: string
+          payment_method_id: string
+          installment_number: number
+          fee_percentage: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          payment_method_id: string
+          installment_number: number
+          fee_percentage?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          payment_method_id?: string
+          installment_number?: number
+          fee_percentage?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_method_installments_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      categories: {
+        Row: {
+          id: string
+          barbershop_id: string
+          name: string
+          type: 'income' | 'expense'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          barbershop_id: string
+          name: string
+          type: 'income' | 'expense'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          barbershop_id?: string
+          name?: string
+          type?: 'income' | 'expense'
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categories_barbershop_id_fkey"
+            columns: ["barbershop_id"]
+            referencedRelation: "barbershops"
+            referencedColumns: ["id"]
           }
         ]
       }
@@ -253,6 +431,7 @@ export interface Database {
           amount: number
           description: string | null
           category: string
+          payment_method_id: string | null
           record_date: string
           created_at: string
         }
@@ -263,6 +442,7 @@ export interface Database {
           amount: number
           description?: string | null
           category?: string
+          payment_method_id?: string | null
           record_date?: string
           created_at?: string
         }
@@ -273,6 +453,7 @@ export interface Database {
           amount?: number
           description?: string | null
           category?: string
+          payment_method_id?: string | null
           record_date?: string
           created_at?: string
         }
@@ -281,6 +462,12 @@ export interface Database {
             foreignKeyName: "financial_records_barbershop_id_fkey"
             columns: ["barbershop_id"]
             referencedRelation: "barbershops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_records_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            referencedRelation: "payment_methods"
             referencedColumns: ["id"]
           }
         ]
@@ -300,3 +487,35 @@ export interface Database {
     }
   }
 }
+
+// Convenience type aliases
+export type Service = Database['public']['Tables']['services']['Row']
+export type Client = Database['public']['Tables']['clients']['Row']
+export type Barber = Database['public']['Tables']['barbers']['Row']
+export type PaymentMethod = Database['public']['Tables']['payment_methods']['Row']
+export type AppointmentRow = Database['public']['Tables']['appointments']['Row']
+export type FinancialRecord = Database['public']['Tables']['financial_records']['Row']
+export type Category = Database['public']['Tables']['categories']['Row']
+export type Barbershop = Database['public']['Tables']['barbershops']['Row']
+
+// Partial types matching common select queries
+export type ServiceOption = Pick<Service, 'id' | 'name' | 'price' | 'duration_minutes'>
+export type ClientOption = Pick<Client, 'id' | 'name' | 'phone' | 'email'>
+export type BarberOption = Pick<Barber, 'id' | 'name' | 'is_active'>
+export type PaymentMethodOption = Pick<PaymentMethod, 'id' | 'name' | 'fee_type' | 'fee_value'>
+export type PaymentMethodInstallment = Database['public']['Tables']['payment_method_installments']['Row']
+
+// Payment method with installment tiers (used in POS dialog)
+export type PaymentMethodWithInstallments = PaymentMethodOption & {
+  supports_installments: boolean
+  payment_method_installments: Pick<PaymentMethodInstallment, 'installment_number' | 'fee_percentage'>[]
+}
+
+// Appointment with joined relations (from select with joins)
+export type AppointmentWithRelations = AppointmentRow & {
+  services: Pick<Service, 'name' | 'duration_minutes' | 'price'> | null
+  barbers: Pick<Barber, 'id' | 'name'> | null
+}
+
+// Server action state (used with useActionState)
+export type ActionState = { error?: string | null; success?: string } | null

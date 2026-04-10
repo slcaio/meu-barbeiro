@@ -5,6 +5,10 @@ import { DollarSign, TrendingDown, TrendingUp } from 'lucide-react'
 import { AddTransactionDialog } from './add-transaction-dialog'
 import { TransactionList } from './transaction-list'
 import { FinancialFilters } from './financial-filters'
+import { CommissionReportDialog } from './commission-report-dialog'
+import { StatementReportDialog } from './statement-report-dialog'
+import { CategoryChart } from './category-chart'
+import { TrendChart } from './trend-chart'
 
 type SearchParams = {
   from?: string
@@ -27,6 +31,41 @@ async function getFinancialData(searchParams: SearchParams) {
 
   if (!barbershop) redirect('/setup/wizard')
 
+  // Fetch categories from categories table
+  const { data: dbCategories } = await supabase
+    .from('categories')
+    .select('*')
+    .eq('barbershop_id', barbershop.id)
+    .order('name')
+
+  // Fetch distinct categories already used in financial_records
+  const { data: usedRecords } = await supabase
+    .from('financial_records')
+    .select('category, type')
+    .eq('barbershop_id', barbershop.id)
+
+  // Merge: start with categories table entries, then add any used categories not yet in the table
+  const categorySet = new Set((dbCategories || []).map(c => `${c.name}::${c.type}`))
+  const mergedCategories = [...(dbCategories || [])]
+
+  if (usedRecords) {
+    for (const record of usedRecords) {
+      const key = `${record.category}::${record.type}`
+      if (!categorySet.has(key)) {
+        categorySet.add(key)
+        mergedCategories.push({
+          id: `used-${record.category}-${record.type}`,
+          barbershop_id: barbershop.id,
+          name: record.category,
+          type: record.type as 'income' | 'expense',
+          created_at: '',
+        })
+      }
+    }
+  }
+
+  mergedCategories.sort((a, b) => a.name.localeCompare(b.name))
+
   // Date Filtering
   const date = new Date()
   let firstDay = new Date(date.getFullYear(), date.getMonth(), 1).toISOString()
@@ -40,7 +79,7 @@ async function getFinancialData(searchParams: SearchParams) {
   // Base Query
   let query = supabase
     .from('financial_records')
-    .select('*')
+    .select('*, payment_methods(name)')
     .eq('barbershop_id', barbershop.id)
     .gte('record_date', firstDay)
     .lte('record_date', lastDay)
@@ -84,8 +123,38 @@ async function getFinancialData(searchParams: SearchParams) {
       description: t.description || 'Sem descrição',
       category: t.category || 'Outros',
       date: t.record_date,
-      source: 'manual' as const
+      source: 'manual' as const,
+      paymentMethodName: (t as any).payment_methods?.name || null,
     })) || []
+  // Group transactions by category for pie charts
+  const incomeByCategory: Record<string, number> = {}
+  const expenseByCategory: Record<string, number> = {}
+  allTransactions.forEach(t => {
+    if (t.type === 'income') {
+      incomeByCategory[t.category] = (incomeByCategory[t.category] || 0) + t.amount
+    } else {
+      expenseByCategory[t.category] = (expenseByCategory[t.category] || 0) + t.amount
+    }
+  })
+
+  const incomeCategoryData = Object.entries(incomeByCategory).map(([name, value]) => ({ name, value }))
+  const expenseCategoryData = Object.entries(expenseByCategory).map(([name, value]) => ({ name, value }))
+
+  // Trend data: group by day for the period
+  const trendMap: Record<string, { receita: number; despesa: number }> = {}
+  allTransactions.forEach(t => {
+    const day = new Date(t.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+    if (!trendMap[day]) trendMap[day] = { receita: 0, despesa: 0 }
+    if (t.type === 'income') trendMap[day].receita += t.amount
+    else trendMap[day].despesa += t.amount
+  })
+  const trendData = Object.entries(trendMap)
+    .sort(([a], [b]) => {
+      const [dA, mA] = a.split('/').map(Number)
+      const [dB, mB] = b.split('/').map(Number)
+      return mA !== mB ? mA - mB : dA - dB
+    })
+    .map(([name, v]) => ({ name, ...v }))
     
   return {
     summary: {
@@ -93,66 +162,77 @@ async function getFinancialData(searchParams: SearchParams) {
       expenses,
       netProfit
     },
-    transactions: allTransactions
+    transactions: allTransactions,
+    categories: mergedCategories,
+    incomeCategoryData,
+    expenseCategoryData,
+    trendData,
   }
 }
 
 export default async function FinancialPage(props: { searchParams: Promise<SearchParams> }) {
   const searchParams = await props.searchParams
-  const { summary, transactions } = await getFinancialData(searchParams)
+  const { summary, transactions, categories, incomeCategoryData, expenseCategoryData, trendData } = await getFinancialData(searchParams)
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Financeiro</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Financeiro</h1>
           <p className="text-muted-foreground">
             Gerencie suas receitas e despesas.
           </p>
         </div>
-        <AddTransactionDialog />
+        <div className="flex flex-wrap gap-2">
+          <CommissionReportDialog />
+          <StatementReportDialog transactions={transactions} summary={summary} />
+          <AddTransactionDialog categories={categories} />
+        </div>
       </div>
 
-      <FinancialFilters />
+      <FinancialFilters categories={categories} />
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+        <Card className="relative overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-500" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10">
+              <TrendingUp className="h-5 w-5 text-emerald-500" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(summary.totalIncome)}
+            <div className="text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+              {formatCurrency(summary.totalIncome)}
             </div>
-            <p className="text-xs text-muted-foreground">
-              +0% em relação ao mês passado
-            </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="relative overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Despesas</CardTitle>
-            <TrendingDown className="h-4 w-4 text-red-500" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10">
+              <TrendingDown className="h-5 w-5 text-red-500" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(summary.expenses)}
+            <div className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400">
+              {formatCurrency(summary.expenses)}
             </div>
-            <p className="text-xs text-muted-foreground">
-              +0% em relação ao mês passado
-            </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="relative overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Lucro Líquido</CardTitle>
-            <DollarSign className="h-4 w-4 text-blue-500" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10">
+              <DollarSign className="h-5 w-5 text-blue-500" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${summary.netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(summary.netProfit)}
+            <div className={`text-xl sm:text-2xl font-bold ${summary.netProfit >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
+              {formatCurrency(summary.netProfit)}
             </div>
             <p className="text-xs text-muted-foreground">
               Resultado do mês
@@ -161,10 +241,17 @@ export default async function FinancialPage(props: { searchParams: Promise<Searc
         </Card>
       </div>
 
+      {/* Charts */}
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-4">
+        <TrendChart data={trendData} />
+        <CategoryChart data={incomeCategoryData} type="income" />
+        <CategoryChart data={expenseCategoryData} type="expense" />
+      </div>
+
       {/* Transaction List */}
       <Card>
         <CardHeader>
-          <CardTitle>Extrato Mensal</CardTitle>
+          <CardTitle className="text-base font-semibold">Extrato Mensal</CardTitle>
         </CardHeader>
         <CardContent>
           <TransactionList transactions={transactions} />

@@ -2,19 +2,11 @@
 
 import * as React from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, format } from 'date-fns'
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Calendar as CalendarIcon } from 'lucide-react'
 import { DateRange } from 'react-day-picker'
 
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
 import {
   Select,
   SelectContent,
@@ -23,7 +15,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-export function FinancialFilters() {
+interface Category {
+  id: string
+  name: string
+  type: 'income' | 'expense'
+}
+
+export function FinancialFilters({ categories }: { categories: Category[] }) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -104,11 +102,11 @@ export function FinancialFilters() {
   }
 
   return (
-    <div className="flex flex-col sm:flex-row gap-4 mb-6 items-end sm:items-center flex-wrap">
+    <div className="flex flex-col sm:flex-row gap-4 mb-6 items-stretch sm:items-center flex-wrap">
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium">Período</span>
         <Select value={currentPeriod} onValueChange={handlePeriodChange}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Período" />
           </SelectTrigger>
           <SelectContent>
@@ -124,50 +122,18 @@ export function FinancialFilters() {
       {currentPeriod === 'custom' && (
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium">Datas</span>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                id="date"
-                variant={'outline'}
-                className={cn(
-                  "w-[240px] justify-start text-left font-normal",
-                  !date && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {date?.from ? (
-                  date.to ? (
-                    <>
-                      {format(date.from, "dd/MM/y", { locale: ptBR })} -{" "}
-                      {format(date.to, "dd/MM/y", { locale: ptBR })}
-                    </>
-                  ) : (
-                    format(date.from, "dd/MM/y", { locale: ptBR })
-                  )
-                ) : (
-                  <span>Selecione uma data</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                initialFocus
-                mode="range"
-                defaultMonth={date?.from}
-                selected={date}
-                onSelect={handleDateSelect}
-                numberOfMonths={2}
-                locale={ptBR}
-              />
-            </PopoverContent>
-          </Popover>
+          <DateRangePicker
+            value={date}
+            onChange={handleDateSelect}
+            className="w-full sm:w-[240px]"
+          />
         </div>
       )}
 
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium">Tipo</span>
         <Select value={currentType} onValueChange={handleTypeChange}>
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger className="w-full sm:w-[150px]">
             <SelectValue placeholder="Tipo" />
           </SelectTrigger>
           <SelectContent>
@@ -181,18 +147,16 @@ export function FinancialFilters() {
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium">Categoria</span>
         <Select value={currentCategory} onValueChange={handleCategoryChange}>
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Categoria" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas</SelectItem>
-            <SelectItem value="Serviço">Serviço</SelectItem>
-            <SelectItem value="Produto">Produto</SelectItem>
-            <SelectItem value="Aluguel">Aluguel</SelectItem>
-            <SelectItem value="Contas">Contas</SelectItem>
-            <SelectItem value="Salário">Salário</SelectItem>
-            <SelectItem value="Marketing">Marketing</SelectItem>
-            <SelectItem value="Outros">Outros</SelectItem>
+            {categories.map((cat) => (
+              <SelectItem key={cat.id} value={cat.name}>
+                {cat.name}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

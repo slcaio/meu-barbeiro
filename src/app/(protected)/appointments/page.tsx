@@ -16,10 +16,10 @@ async function getData() {
 
   if (!barbershop) redirect('/setup/wizard')
 
-  // Get appointments
+  // Get appointments with barber join
   const { data: appointments } = await supabase
     .from('appointments')
-    .select('*, services(name, duration_minutes, price)')
+    .select('*, services(name, duration_minutes, price), barbers(id, name)')
     .eq('barbershop_id', barbershop.id)
     .order('appointment_date', { ascending: true })
 
@@ -37,21 +37,39 @@ async function getData() {
     .eq('barbershop_id', barbershop.id)
     .order('name')
 
+  // Get active barbers for dropdown
+  const { data: barbers } = await supabase
+    .from('barbers')
+    .select('id, name, is_active')
+    .eq('barbershop_id', barbershop.id)
+    .eq('is_active', true)
+    .order('name')
+
+  // Get active payment methods for POS dialog (with installment tiers)
+  const { data: paymentMethods } = await supabase
+    .from('payment_methods')
+    .select('id, name, fee_type, fee_value, supports_installments, payment_method_installments(installment_number, fee_percentage)')
+    .eq('barbershop_id', barbershop.id)
+    .eq('is_active', true)
+    .order('name')
+
   return { 
     appointments: appointments || [], 
     services: services || [], 
-    clients: clients || [] 
+    clients: clients || [],
+    barbers: barbers || [],
+    paymentMethods: paymentMethods || [],
   }
 }
 
 export default async function AppointmentsPage() {
-  const { appointments, services, clients } = await getData()
+  const { appointments, services, clients, barbers, paymentMethods } = await getData()
 
   return (
     <div className="space-y-6 h-full">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Agenda</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Agenda</h1>
           <p className="text-muted-foreground">
             Gerencie seus agendamentos e horários.
           </p>
@@ -61,7 +79,9 @@ export default async function AppointmentsPage() {
       <AppointmentsCalendarView 
         appointments={appointments} 
         services={services} 
-        clients={clients} 
+        clients={clients}
+        barbers={barbers}
+        paymentMethods={paymentMethods}
       />
     </div>
   )

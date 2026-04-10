@@ -8,17 +8,20 @@ import { ptBR } from 'date-fns/locale'
 import { Check, X, User, Phone, Scissors, Calendar, FileText, Info } from 'lucide-react'
 import { AppointmentPOSDialog } from './appointment-pos-dialog'
 import { formatPhone } from '@/lib/utils'
+import type { AppointmentWithRelations, PaymentMethodWithInstallments } from '@/types/database.types'
 
 interface AppointmentDetailsDialogProps {
-  appointment: any
+  appointment: AppointmentWithRelations
   isOpen: boolean
   onOpenChange: (open: boolean) => void
+  paymentMethods: PaymentMethodWithInstallments[]
 }
 
 export function AppointmentDetailsDialog({
   appointment,
   isOpen,
   onOpenChange,
+  paymentMethods,
 }: AppointmentDetailsDialogProps) {
   const [posOpen, setPosOpen] = useState(false)
   const [posAction, setPosAction] = useState<'complete' | 'cancel'>('complete')
@@ -39,10 +42,10 @@ export function AppointmentDetailsDialog({
   }
 
   const statusColors: Record<string, string> = {
-    scheduled: 'bg-blue-100 text-blue-800',
-    confirmed: 'bg-green-100 text-green-800',
-    completed: 'bg-green-100 text-green-800',
-    cancelled: 'bg-red-100 text-red-800',
+    scheduled: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+    confirmed: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+    completed: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+    cancelled: 'bg-red-500/10 text-red-600 dark:text-red-400',
   }
 
   return (
@@ -51,14 +54,14 @@ export function AppointmentDetailsDialog({
         <div className="space-y-6">
           
           {/* Client Info Section */}
-          <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 space-y-3">
+          <div className="bg-muted p-4 rounded-lg border border-border space-y-3">
              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">
                   <User className="h-5 w-5" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-gray-900">{appointment.client_name}</h4>
-                  <div className="flex items-center text-sm text-gray-500 gap-1">
+                  <h4 className="font-semibold text-foreground">{appointment.client_name}</h4>
+                  <div className="flex items-center text-sm text-muted-foreground gap-1">
                      <Phone className="h-3 w-3" />
                      <span>{appointment.client_phone ? formatPhone(appointment.client_phone) : 'Sem telefone'}</span>
                   </div>
@@ -69,34 +72,37 @@ export function AppointmentDetailsDialog({
           {/* Appointment Details */}
           <div className="space-y-4">
              <div className="flex items-start gap-3">
-                <div className="mt-0.5 text-gray-400">
+                <div className="mt-0.5 text-muted-foreground">
                    <Scissors className="h-5 w-5" />
                 </div>
                 <div>
-                   <span className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Serviço</span>
-                   <span className="text-gray-900 font-medium">{appointment.services?.name}</span>
+                   <span className="block text-xs font-medium text-muted-foreground uppercase tracking-wide">Serviço</span>
+                   <span className="text-foreground font-medium">{appointment.services?.name}</span>
+                   {appointment.barbers?.name && (
+                     <span className="text-sm text-muted-foreground ml-1">• {appointment.barbers.name}</span>
+                   )}
                 </div>
              </div>
 
              <div className="flex items-start gap-3">
-                <div className="mt-0.5 text-gray-400">
+                <div className="mt-0.5 text-muted-foreground">
                    <Calendar className="h-5 w-5" />
                 </div>
                 <div>
-                   <span className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Data e Hora</span>
-                   <span className="text-gray-900 font-medium capitalize">
+                   <span className="block text-xs font-medium text-muted-foreground uppercase tracking-wide">Data e Hora</span>
+                   <span className="text-foreground font-medium capitalize">
                      {format(new Date(appointment.appointment_date), "EEEE, d 'de' MMMM 'às' HH:mm", { locale: ptBR })}
                    </span>
                 </div>
              </div>
 
              <div className="flex items-start gap-3">
-                <div className="mt-0.5 text-gray-400">
+                <div className="mt-0.5 text-muted-foreground">
                    <Info className="h-5 w-5" />
                 </div>
                 <div>
-                   <span className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Status</span>
-                   <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium mt-1 ${statusColors[appointment.status] || 'bg-gray-100 text-gray-800'}`}>
+                   <span className="block text-xs font-medium text-muted-foreground uppercase tracking-wide">Status</span>
+                   <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium mt-1 ${statusColors[appointment.status] || 'bg-muted text-muted-foreground'}`}>
                      {statusLabels[appointment.status] || appointment.status}
                    </span>
                 </div>
@@ -104,12 +110,12 @@ export function AppointmentDetailsDialog({
 
              {appointment.notes && (
                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 text-gray-400">
+                  <div className="mt-0.5 text-muted-foreground">
                      <FileText className="h-5 w-5" />
                   </div>
                   <div>
-                     <span className="block text-xs font-medium text-gray-500 uppercase tracking-wide">Observações</span>
-                     <p className="text-gray-700 text-sm mt-0.5">{appointment.notes}</p>
+                     <span className="block text-xs font-medium text-muted-foreground uppercase tracking-wide">Observações</span>
+                     <p className="text-foreground/80 text-sm mt-0.5">{appointment.notes}</p>
                   </div>
                </div>
              )}
@@ -118,7 +124,7 @@ export function AppointmentDetailsDialog({
           <div className="pt-4 flex justify-end space-x-3 border-t">
             <Button
               variant="outline"
-              className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+              className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-500/10 border-red-200 dark:border-red-500/20"
               onClick={() => handleStatusChange('cancelled')}
               disabled={appointment.status === 'cancelled'}
             >
@@ -126,7 +132,7 @@ export function AppointmentDetailsDialog({
               Cancelar
             </Button>
             <Button
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+              className="flex-1"
               onClick={() => handleStatusChange('completed')}
               disabled={appointment.status === 'completed'}
             >
@@ -142,6 +148,7 @@ export function AppointmentDetailsDialog({
         isOpen={posOpen}
         onOpenChange={setPosOpen}
         action={posAction}
+        paymentMethods={paymentMethods}
       />
     </>
   )
