@@ -3,7 +3,7 @@ import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Calendar, DollarSign, Clock, Scissors } from 'lucide-react'
+import { Calendar, DollarSign, Scissors } from 'lucide-react'
 import { KpiCard } from './kpi-card'
 
 const RevenueChart = dynamic(() =>
@@ -122,6 +122,7 @@ async function KpiSection({ barbershopId }: { barbershopId: string }) {
     { count: appointmentsToday },
     { data: monthlyAppointments },
     { data: lastMonthAppointments },
+    { data: dailyAppointments },
     { count: activeBarbers },
   ] = await Promise.all([
     supabase
@@ -144,6 +145,13 @@ async function KpiSection({ barbershopId }: { barbershopId: string }) {
       .gte('appointment_date', firstDayOfLastMonth)
       .lte('appointment_date', lastDayOfLastMonth),
     supabase
+      .from('appointments')
+      .select('total_amount')
+      .eq('barbershop_id', barbershopId)
+      .eq('payment_status', 'paid')
+      .gte('appointment_date', `${todayStr}T00:00:00`)
+      .lte('appointment_date', `${todayStr}T23:59:59`),
+    supabase
       .from('barbers')
       .select('*', { count: 'exact', head: true })
       .eq('barbershop_id', barbershopId)
@@ -152,6 +160,7 @@ async function KpiSection({ barbershopId }: { barbershopId: string }) {
 
   const revenue = monthlyAppointments?.reduce((acc, curr) => acc + curr.total_amount, 0) || 0
   const lastMonthRevenue = lastMonthAppointments?.reduce((acc, curr) => acc + curr.total_amount, 0) || 0
+  const dailyRevenue = dailyAppointments?.reduce((acc, curr) => acc + curr.total_amount, 0) || 0
   const revenueTrend = lastMonthRevenue > 0
     ? Math.round(((revenue - lastMonthRevenue) / lastMonthRevenue) * 100)
     : revenue > 0 ? 100 : 0
@@ -175,16 +184,16 @@ async function KpiSection({ barbershopId }: { barbershopId: string }) {
         trend={revenueTrend !== 0 ? { value: revenueTrend, label: 'vs mês anterior' } : undefined}
       />
       <KpiCard
+        title="Receita Diária"
+        value={formatCurrency(dailyRevenue)}
+        icon={DollarSign}
+        iconColor="text-cyan-500"
+      />
+      <KpiCard
         title="Barbeiros Ativos"
         value={String(activeBarbers || 0)}
         icon={Scissors}
         iconColor="text-purple-500"
-      />
-      <KpiCard
-        title="Horas Trabalhadas"
-        value="--"
-        icon={Clock}
-        iconColor="text-amber-500"
       />
     </div>
   )

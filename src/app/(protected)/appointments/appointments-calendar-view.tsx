@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useTransition } from 'react'
+import { useState, useCallback, useTransition, useMemo } from 'react'
 import { Calendar, dateFnsLocalizer, Views, View } from 'react-big-calendar'
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop'
 import { format, parse, startOfWeek, getDay } from 'date-fns'
@@ -39,6 +39,19 @@ interface CalendarEvent {
 
 const DnDCalendar = withDragAndDrop<CalendarEvent>(Calendar)
 
+const BARBER_COLORS = [
+  { bg: '#3B82F6', border: '#2563EB', label: 'blue' },    // blue
+  { bg: '#8B5CF6', border: '#7C3AED', label: 'violet' },  // violet
+  { bg: '#F59E0B', border: '#D97706', label: 'amber' },   // amber
+  { bg: '#EC4899', border: '#DB2777', label: 'pink' },     // pink
+  { bg: '#14B8A6', border: '#0D9488', label: 'teal' },     // teal
+  { bg: '#F97316', border: '#EA580C', label: 'orange' },   // orange
+  { bg: '#06B6D4', border: '#0891B2', label: 'cyan' },     // cyan
+  { bg: '#84CC16', border: '#65A30D', label: 'lime' },     // lime
+  { bg: '#E11D48', border: '#BE123C', label: 'rose' },     // rose
+  { bg: '#6366F1', border: '#4F46E5', label: 'indigo' },   // indigo
+]
+
 interface AppointmentsCalendarViewProps {
   appointments: AppointmentWithRelations[]
   services: ServiceOption[]
@@ -48,7 +61,6 @@ interface AppointmentsCalendarViewProps {
 }
 
 export function AppointmentsCalendarView({ appointments, services, clients, barbers, paymentMethods }: AppointmentsCalendarViewProps) {
-  console.log('Appointments received:', appointments)
   const [view, setView] = useState<View>(Views.DAY)
   const [date, setDate] = useState(new Date())
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -57,6 +69,15 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [isPending, startTransition] = useTransition()
   const [filterBarberId, setFilterBarberId] = useState<string>('')
+
+  // Map barber IDs to colors
+  const barberColorMap = useMemo(() => {
+    const map = new Map<string, typeof BARBER_COLORS[number]>()
+    barbers.forEach((barber, index) => {
+      map.set(barber.id, BARBER_COLORS[index % BARBER_COLORS.length])
+    })
+    return map
+  }, [barbers])
 
   // Transform appointments to events (filtered by barber)
   const filteredAppointments = filterBarberId
@@ -111,20 +132,27 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
   }
 
   const eventStyleGetter = (event: CalendarEvent) => {
-    let backgroundColor = '#3174ad'
-    if (event.status === 'confirmed') backgroundColor = '#10B981' // green-500
-    if (event.status === 'completed') backgroundColor = '#10B981' // green-500
-    if (event.status === 'cancelled') backgroundColor = '#EF4444' // red-500
-    if (event.status === 'scheduled') backgroundColor = '#3B82F6' // blue-500
+    const barberId = event.resource.barber_id
+    const barberColor = barberId ? barberColorMap.get(barberId) : null
+    const backgroundColor = barberColor?.bg ?? '#3174ad'
+    const borderColor = barberColor?.border ?? '#2563a3'
+
+    const isCancelled = event.status === 'cancelled'
+    const isCompleted = event.status === 'completed'
 
     return {
       style: {
-        backgroundColor,
+        backgroundColor: isCancelled ? '#71717a' : backgroundColor,
         borderRadius: '4px',
-        opacity: 0.8,
+        opacity: isCancelled ? 0.5 : isCompleted ? 0.7 : 0.9,
         color: 'white',
-        border: '0px',
-        display: 'block'
+        borderTop: 'none',
+        borderRight: 'none',
+        borderBottom: 'none',
+        borderLeft: `3px solid ${isCancelled ? '#52525b' : borderColor}`,
+        display: 'block',
+        textDecoration: isCancelled ? 'line-through' : 'none',
+        overflow: 'hidden',
       }
     }
   }
@@ -204,13 +232,20 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
   }
 
   const CustomEvent = ({ event }: { event: CalendarEvent }) => {
+    const clientName = event.resource.client_name
+    const serviceName = event.resource.services?.name ?? ''
+    const barberName = event.resource.barbers?.name ?? ''
+    const startTime = format(event.start, 'HH:mm')
+    const endTime = format(event.end, 'HH:mm')
+
     return (
-      <div className="flex flex-col h-full overflow-hidden leading-tight">
-        <div className="text-xs font-semibold mb-0.5">
-           {event.title.split(' - ')[0]}
+      <div className="flex flex-col h-full overflow-hidden leading-tight px-1 py-0.5">
+        <div className="flex items-center gap-1 min-w-0">
+          <span className="text-[10px] opacity-75 shrink-0">{startTime}–{endTime}</span>
+          <span className="text-xs font-semibold truncate">{clientName}</span>
         </div>
         <div className="text-[10px] opacity-90 truncate">
-           {event.title.split(' - ')[1]}
+          {serviceName}{barberName ? ` · ${barberName}` : ''}
         </div>
       </div>
     )
@@ -218,6 +253,22 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
 
   return (
     <div className="h-[calc(100vh-200px)] sm:h-[calc(100vh-140px)] min-h-[500px] sm:min-h-[600px] bg-card p-3 sm:p-6 rounded-xl shadow-sm border flex flex-col overflow-hidden">
+      {barbers.length > 0 && (
+        <div className="flex items-center gap-3 mb-2 flex-shrink-0 flex-wrap">
+          {barbers.map((barber, index) => {
+            const color = BARBER_COLORS[index % BARBER_COLORS.length]
+            return (
+              <div key={barber.id} className="flex items-center gap-1.5">
+                <span
+                  className="inline-block w-3 h-3 rounded-sm flex-shrink-0"
+                  style={{ backgroundColor: color.bg }}
+                />
+                <span className="text-xs text-muted-foreground">{barber.name}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
       <div className="flex justify-between items-center mb-2 flex-shrink-0">
          <h2 className="text-xl font-bold hidden">Calendário</h2>
          <CreateAppointmentDialog 
@@ -255,6 +306,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
                localizer?.format(date, 'dd EEEE', culture) ?? '',
              weekdayFormat: (date, culture, localizer) =>
                 localizer?.format(date, 'EEE', culture) ?? '',
+             eventTimeRangeFormat: () => null,
           }}
           views={[Views.DAY, Views.WEEK]}
           step={30}

@@ -62,7 +62,7 @@ export function CreatePaymentMethodDialog() {
                 id="fee_type"
                 name="fee_type"
                 defaultValue="percentage"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors hover:border-ring/50 dark:hover:bg-input/50"
               >
                 <option value="percentage">Percentual (%)</option>
                 <option value="fixed">Valor Fixo (R$)</option>
@@ -83,18 +83,21 @@ export function CreatePaymentMethodDialog() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <label
+            htmlFor="supports-installments"
+            className="flex items-center gap-3 rounded-lg border border-input p-3 cursor-pointer transition-colors hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+          >
             <input
               type="checkbox"
               id="supports-installments"
               checked={supportsInstallments}
               onChange={(e) => setSupportsInstallments(e.target.checked)}
-              className="h-4 w-4 rounded border-input text-primary focus:ring-ring"
+              className="h-4 w-4 shrink-0 rounded border-input accent-primary focus:ring-ring"
             />
-            <Label htmlFor="supports-installments" className="text-sm font-normal">
+            <span className="text-sm">
               Aceita parcelamento (até 12x)
-            </Label>
-          </div>
+            </span>
+          </label>
 
           {supportsInstallments && (
             <div className="space-y-3 border rounded-md p-4 bg-muted/50">
@@ -115,6 +118,7 @@ export function CreatePaymentMethodDialog() {
                       onChange={(e) => handleInstallmentFeeChange(num, e.target.value)}
                       className="h-9"
                     />
+                    %
                   </div>
                 ))}
               </div>
