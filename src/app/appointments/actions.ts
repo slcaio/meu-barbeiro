@@ -127,14 +127,23 @@ export async function updateAppointmentStatus(id: string, status: 'confirmed' | 
   return { success: 'Status atualizado com sucesso!' }
 }
 
-export async function updateAppointmentDate(id: string, newDate: string) {
+export async function updateAppointmentDate(id: string, newDate: string, barberId?: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Usuário não autenticado.' }
 
+  const updateData: { appointment_date: string; barber_id?: string | null } = {
+    appointment_date: newDate,
+  }
+
+  // If barberId is explicitly passed, update the barber assignment too
+  if (barberId !== undefined) {
+    updateData.barber_id = barberId || null
+  }
+
   const { error } = await supabase
     .from('appointments')
-    .update({ appointment_date: newDate })
+    .update(updateData)
     .eq('id', id)
 
   if (error) {
