@@ -161,6 +161,25 @@ describe('Appointments Actions', () => {
       const result = await updateAppointmentDate('apt-1', '2026-04-15T10:00:00Z')
       expect(result).toEqual({ success: 'Data atualizada com sucesso!' })
     })
+
+    it('atualiza data e barbeiro com sucesso', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: { id: 'user-123' } },
+      })
+
+      const eqMock = vi.fn().mockResolvedValue({ error: null })
+      const chain = mockChain()
+      chain.update = vi.fn().mockReturnValue({ eq: eqMock })
+      mockFrom.mockReturnValue(chain)
+
+      const { updateAppointmentDate } = await import('./actions')
+      const result = await updateAppointmentDate('apt-1', '2026-04-15T10:00:00Z', 'barber-uuid')
+      expect(result).toEqual({ success: 'Data atualizada com sucesso!' })
+      expect(chain.update).toHaveBeenCalledWith({
+        appointment_date: '2026-04-15T10:00:00Z',
+        barber_id: 'barber-uuid',
+      })
+    })
   })
 
   describe('completeAppointmentWithTransaction', () => {

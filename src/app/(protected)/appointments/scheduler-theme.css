@@ -1,0 +1,486 @@
+/*
+ * Bryntum Scheduler — Custom theme overrides.
+ *
+ * Strategy: svalbard-dark.css is imported as structural base.
+ * We remap Bryntum's internal --b-neutral-* palette and key variables
+ * to our design system's CSS variables (from globals.css).
+ * Since those variables change automatically when the .dark class toggles,
+ * the scheduler follows the app theme with zero JS.
+ */
+
+/* ─── Remap Bryntum neutral palette to design system ─── */
+.b-scheduler {
+  /*
+   * Bryntum's neutral scale: 100 = surface/background, 0 = max contrast/text.
+   * We map to our design tokens so the same values work in light AND dark mode.
+   */
+
+  /* Surface / background shades */
+  --b-neutral-100: var(--background);
+  --b-neutral-99: var(--card);
+  --b-neutral-98: var(--card);
+  --b-neutral-97: var(--card);
+  --b-neutral-96: var(--card);
+  --b-neutral-95: var(--muted);
+  --b-neutral-94: var(--muted);
+  --b-neutral-93: var(--muted);
+  --b-neutral-92: var(--muted);
+  --b-neutral-91: var(--muted);
+  --b-neutral-90: var(--muted);
+
+  /* Border / separator shades */
+  --b-neutral-85: var(--border);
+  --b-neutral-80: var(--border);
+  --b-neutral-75: var(--border);
+  --b-neutral-70: var(--border);
+  --b-neutral-65: var(--input);
+  --b-neutral-60: var(--input);
+
+  /* Muted text / subtle UI */
+  --b-neutral-55: var(--muted-foreground);
+  --b-neutral-50: var(--muted-foreground);
+  --b-neutral-45: var(--muted-foreground);
+  --b-neutral-40: var(--muted-foreground);
+  --b-neutral-35: var(--muted-foreground);
+
+  /* Text / high contrast */
+  --b-neutral-30: var(--foreground);
+  --b-neutral-25: var(--muted-foreground);
+  --b-neutral-20: var(--foreground);
+  --b-neutral-15: var(--foreground);
+  --b-neutral-10: var(--foreground);
+  --b-neutral-5: var(--foreground);
+  --b-neutral-2: var(--foreground);
+  --b-neutral-1: var(--foreground);
+  --b-neutral-0: var(--foreground);
+
+  /* Mixing bases (used by color-mix() in events, etc.) */
+  --b-mix: var(--card);
+  --b-opposite: var(--foreground);
+
+  /* Key derived variables */
+  --b-grid-header-color: var(--foreground);
+  --b-column-lines-tick-color: var(--border);
+  --b-widget-border-color: var(--border);
+  --b-splitter-color: var(--border);
+  --b-splitter-hover-color: var(--muted-foreground);
+  --b-popup-background: var(--card);
+  --b-tooltip-rich-background: var(--card);
+  --b-tooltip-plain-background: var(--card);
+
+  /* Own styling */
+  font-family: inherit;
+  background: var(--card) !important;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border) !important;
+  overflow: hidden;
+}
+
+/* ─── Body container ─── */
+.b-grid-body-container {
+  background: var(--card) !important;
+}
+
+/* ─── Header ─── */
+.b-grid-header-container,
+.b-grid-headers {
+  background: var(--card) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+.b-grid-header {
+  color: var(--foreground) !important;
+  background: var(--card) !important;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.b-sch-header-timeaxis-cell,
+.b-sch-header-time-axis-cell {
+  color: var(--foreground) !important;
+  background: var(--card) !important;
+  border-color: var(--border) !important;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* ─── Time axis cells ─── */
+.b-sch-timeaxis-cell {
+  border-color: var(--border) !important;
+}
+
+/* ─── Grid cells / rows ─── */
+.b-grid-cell {
+  color: var(--foreground) !important;
+  border-color: var(--border) !important;
+}
+
+.b-grid-row {
+  background: var(--card) !important;
+  border-color: var(--border) !important;
+}
+
+.b-grid-row.b-odd,
+.b-gridbase.b-stripe .b-grid-row.b-odd {
+  background: var(--muted) !important;
+}
+
+.b-grid-row.b-even {
+  background: var(--card) !important;
+}
+
+/* ─── Resource column (locked subgrid) ─── */
+.b-grid-subgrid-locked {
+  background: var(--card) !important;
+  border-right: 1px solid var(--border) !important;
+}
+
+/* ─── Normal (schedule) subgrid ─── */
+.b-grid-subgrid-normal {
+  background: var(--card) !important;
+}
+
+/* ─── Today highlight ─── */
+.b-sch-today-cell {
+  background-color: color-mix(in srgb, var(--primary) 8%, transparent) !important;
+}
+
+/* ─── Current time indicator ─── */
+.b-sch-current-time {
+  background-color: var(--destructive) !important;
+  height: 2px !important;
+}
+
+/* ─── Events ─── */
+.b-sch-event-wrap .b-sch-event {
+  border-radius: 6px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  font-family: inherit;
+  transition: opacity 150ms ease;
+}
+
+.b-sch-event-wrap .b-sch-event:hover {
+  filter: brightness(1.05);
+}
+
+/* Event status styles */
+.b-sch-event.event-cancelled {
+  opacity: 0.5 !important;
+  background-color: #71717a !important;
+}
+
+.b-sch-event.event-cancelled .event-content {
+  text-decoration: line-through;
+}
+
+.b-sch-event.event-completed {
+  opacity: 0.7 !important;
+}
+
+/* ─── Tooltip ─── */
+.b-tooltip {
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  color: var(--foreground) !important;
+  padding: 0 !important;
+  font-family: inherit;
+}
+
+/* ─── Scrollbar ─── */
+.b-grid-body-container::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.b-grid-body-container::-webkit-scrollbar-track {
+  background: var(--muted);
+}
+
+.b-grid-body-container::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+}
+
+/* ─── Splitter ─── */
+.b-grid-splitter {
+  background: var(--border) !important;
+}
+
+/* ─── Drag proxy ─── */
+.b-sch-dragproxy {
+  opacity: 0.8;
+}
+
+/* ─── Empty text ─── */
+.b-grid-empty-text {
+  color: var(--muted-foreground) !important;
+}
+
+/* ─── Column lines ─── */
+.b-column-line {
+  border-color: var(--border) !important;
+}
+
+/* ─── Selection ─── */
+.b-grid-row.b-selected {
+  background-color: var(--accent) !important;
+}
+
+/* ─── Schedule zone click highlight ─── */
+.b-sch-schedulezone-highlight {
+  background: color-mix(in srgb, var(--primary) 10%, transparent) !important;
+}
+
+/* ─── Focused cell ─── */
+.b-grid-cell.b-focused {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* ─── Virtual scrollbar ─── */
+.b-virtual-scrollbar {
+  background: var(--card) !important;
+}
+
+/* ─── Panel + catch-all ─── */
+.b-panel,
+.b-panel-body-wrap {
+  background: var(--card) !important;
+  color: var(--foreground) !important;
+}
+
+/* ─── Vertical time axis ─── */
+.b-vertical-time-axis-column {
+  background-color: var(--card) !important;
+}
+/*
+ * Bryntum Scheduler — Complete custom theme using CSS variables from globals.css.
+ * No Bryntum theme file imported; this CSS is the sole color/style provider.
+ * Automatically responds to light/dark mode via CSS custom properties.
+ */
+
+/* ─── Bryntum internal CSS custom properties ─── */
+.b-scheduler,
+.b-schedulerbase {
+  /* Panel / surface */
+  --panel-background-color: var(--card);
+  --widget-background-color: var(--card);
+  --scheduler-background-color: var(--card);
+
+  /* Text */
+  --panel-color: var(--foreground);
+  --widget-color: var(--foreground);
+
+  /* Borders */
+  --panel-border-color: var(--border);
+  --widget-border-color: var(--border);
+
+  /* Grid specifics */
+  --grid-header-background-color: var(--card);
+  --grid-cell-color: var(--foreground);
+  --grid-row-border-color: var(--border);
+
+  font-family: inherit;
+  background: var(--card) !important;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border) !important;
+  overflow: hidden;
+}
+
+/* ─── Body container ─── */
+.b-grid-body-container {
+  background: var(--card) !important;
+}
+
+/* ─── Header ─── */
+.b-grid-header-container,
+.b-grid-headers {
+  background: var(--card) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+.b-grid-header {
+  color: var(--foreground) !important;
+  background: var(--card) !important;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.b-sch-header-timeaxis-cell {
+  color: var(--foreground) !important;
+  background: var(--card) !important;
+  border-color: var(--border) !important;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* ─── Time axis cells ─── */
+.b-sch-timeaxis-cell {
+  border-color: var(--border) !important;
+  background: transparent !important;
+}
+
+/* ─── Grid cells / rows ─── */
+.b-grid-cell {
+  color: var(--foreground) !important;
+  background: transparent !important;
+  border-color: var(--border) !important;
+}
+
+.b-grid-row {
+  background: var(--card) !important;
+  border-color: var(--border) !important;
+}
+
+.b-grid-row.b-odd {
+  background: var(--muted) !important;
+}
+
+.b-grid-row.b-even {
+  background: var(--card) !important;
+}
+
+/* ─── Resource column (locked subgrid) ─── */
+.b-grid-subgrid-locked {
+  background: var(--card) !important;
+  border-right: 1px solid var(--border) !important;
+}
+
+.b-grid-subgrid-locked .b-grid-cell {
+  background: inherit !important;
+}
+
+/* ─── Normal (schedule) subgrid ─── */
+.b-grid-subgrid-normal {
+  background: var(--card) !important;
+}
+
+.b-grid-subgrid-normal .b-grid-cell {
+  background: inherit !important;
+}
+
+/* ─── Today highlight ─── */
+.b-sch-today-cell {
+  background-color: color-mix(in srgb, var(--primary) 8%, transparent) !important;
+}
+
+/* ─── Current time indicator ─── */
+.b-sch-current-time {
+  background-color: var(--destructive) !important;
+  height: 2px !important;
+}
+
+/* ─── Stripe feature ─── */
+.b-grid-row.b-stripe-odd,
+.b-gridbase.b-stripe .b-grid-row.b-odd {
+  background: var(--muted) !important;
+}
+
+/* ─── Events ─── */
+.b-sch-event-wrap .b-sch-event {
+  border-radius: 6px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  font-family: inherit;
+  transition: opacity 150ms ease;
+}
+
+.b-sch-event-wrap .b-sch-event:hover {
+  filter: brightness(1.05);
+}
+
+/* Event status styles */
+.b-sch-event.event-cancelled {
+  opacity: 0.5 !important;
+  background-color: #71717a !important;
+}
+
+.b-sch-event.event-cancelled .event-content {
+  text-decoration: line-through;
+}
+
+.b-sch-event.event-completed {
+  opacity: 0.7 !important;
+}
+
+/* ─── Tooltip ─── */
+.b-tooltip {
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  color: var(--foreground) !important;
+  padding: 0 !important;
+  font-family: inherit;
+}
+
+/* ─── Scrollbar ─── */
+.b-grid-body-container::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.b-grid-body-container::-webkit-scrollbar-track {
+  background: var(--muted);
+}
+
+.b-grid-body-container::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+}
+
+/* ─── Splitter ─── */
+.b-grid-splitter {
+  background: var(--border) !important;
+}
+
+/* ─── Drag proxy ─── */
+.b-sch-dragproxy {
+  opacity: 0.8;
+}
+
+/* ─── Empty text ─── */
+.b-grid-empty-text {
+  color: var(--muted-foreground) !important;
+}
+
+/* ─── Column lines ─── */
+.b-column-line {
+  border-color: var(--border) !important;
+}
+
+/* ─── Selection ─── */
+.b-grid-row.b-selected {
+  background-color: var(--accent) !important;
+}
+
+/* ─── Schedule zone click highlight ─── */
+.b-sch-schedulezone-highlight {
+  background: color-mix(in srgb, var(--primary) 10%, transparent) !important;
+}
+
+/* ─── Focused cell ─── */
+.b-grid-cell.b-focused {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* ─── Virtual scrollbar ─── */
+.b-virtual-scrollbar {
+  background: var(--card) !important;
+}
+
+/* ─── Catch-all for any Bryntum panel backgrounds ─── */
+.b-panel,
+.b-panel-body-wrap {
+  background: var(--card) !important;
+  color: var(--foreground) !important;
+}
+
+/* ─── Major column lines (hour boundaries) ─── */
+.b-column-line-major {
+  border-color: var(--border) !important;
+}

@@ -85,7 +85,6 @@
   --warning: #f59e0b;
   --warning-foreground: #ffffff;
   --border: #e2e8f0;
-  --border-transition: #64748b; /* cor intermediária para transição */
   --input: #e2e8f0;
   --ring: #2563eb;
   --radius: 0.625rem;
@@ -127,7 +126,6 @@
   --warning: #fbbf24;
   --warning-foreground: #0f172a;
   --border: rgba(255, 255, 255, 0.08);
-  --border-transition: #334155; /* cor intermediária escura para transição */
   --input: rgba(255, 255, 255, 0.12);
   --ring: #3b82f6;
   --chart-1: #3b82f6;
@@ -157,13 +155,37 @@
   html.theme-transitioning *::before,
   html.theme-transitioning *::after {
     transition: background-color 500ms ease-in-out, color 500ms ease-in-out,
-      box-shadow 500ms ease-in-out, fill 500ms ease-in-out, stroke 500ms ease-in-out !important;
-    border-color: var(--border-transition) !important;
+      border-color 500ms ease-in-out, box-shadow 500ms ease-in-out,
+      fill 500ms ease-in-out, stroke 500ms ease-in-out !important;
   }
-  html.theme-transitioning {
-    /* Força borda intermediária em elementos root também */
-    --border: var(--border-transition) !important;
-  }
+}
+
+/* ─── Global scrollbar ─── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* Hide number input spinners */
@@ -188,74 +210,3 @@ select {
   padding-right: 2rem;
 }
 
-/* React Big Calendar Overrides — force all borders to use theme variable */
-.rbc-calendar { font-family: inherit; }
-.rbc-toolbar { display: none !important; }
-
-/* Reset every border the library sets to use our CSS variable */
-.rbc-header,
-.rbc-time-view,
-.rbc-time-content,
-.rbc-timeslot-group,
-.rbc-day-slot .rbc-time-slot,
-.rbc-time-content > * + * > *,
-.rbc-day-bg + .rbc-day-bg,
-.rbc-time-header-content,
-.rbc-month-view,
-.rbc-month-row + .rbc-month-row,
-.rbc-time-gutter,
-.rbc-time-header-gutter {
-  border-color: var(--border) !important;
-}
-
-.rbc-header { 
-  padding: 12px 8px; 
-  font-weight: 600; 
-  font-size: 0.875rem; 
-  border-bottom: 1px solid var(--border) !important; 
-  white-space: nowrap; 
-  overflow: hidden; 
-  text-overflow: ellipsis; 
-  height: 40px; 
-  display: flex; 
-  align-items: center; 
-  justify-content: center;
-  color: var(--foreground);
-  background: var(--card);
-}
-.rbc-time-view { 
-  border: 1px solid var(--border) !important; 
-  border-radius: 0.5rem; 
-  overflow: hidden; 
-  flex: 1; 
-  min-height: 0;
-  background: var(--card);
-}
-.rbc-time-content { border-top: 1px solid var(--border) !important; background: var(--card); }
-.rbc-time-content > * + * > * { border-left: 1px solid var(--border) !important; }
-.rbc-timeslot-group { border-bottom: 1px solid var(--border) !important; min-height: 120px !important; }
-.rbc-day-slot .rbc-time-slot { border-top: 1px solid var(--border) !important; }
-.rbc-day-slot .rbc-events-container { background: transparent; }
-.rbc-current-time-indicator { background-color: var(--destructive); height: 2px; }
-.rbc-event { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.15); border-radius: 6px; border: none !important; overflow: hidden; padding: 2px 0; }
-.rbc-event-content { overflow: hidden; height: 100%; }
-.rbc-event-label { display: none !important; font-size: 0; height: 0; overflow: hidden; }
-.rbc-day-slot .rbc-event-label { display: none !important; }
-.rbc-today { background-color: var(--accent) !important; }
-.rbc-allday-cell { display: none !important; }
-.rbc-label { color: var(--muted-foreground); font-size: 0.75rem; }
-.rbc-time-gutter { background: var(--card); border-right: 1px solid var(--border) !important; }
-.rbc-time-header-gutter { background: var(--card); border-bottom: 1px solid var(--border) !important; }
-.rbc-day-bg { background: var(--card); }
-.rbc-off-range-bg { background: var(--muted); }
-.rbc-month-view { background: var(--card); border: 1px solid var(--border) !important; border-radius: 0.5rem; }
-.rbc-month-row + .rbc-month-row { border-top: 1px solid var(--border) !important; }
-.rbc-date-cell { color: var(--foreground); }
-.rbc-day-bg + .rbc-day-bg { border-left: 1px solid var(--border) !important; }
-.rbc-time-header-content { border-left: 1px solid var(--border) !important; }
-.rbc-time-header { background: var(--card); }
-.rbc-addons-dnd .rbc-addons-dnd-resize-ns-anchor .rbc-addons-dnd-resize-ns-icon { display: none; }
-
-/* DnD addon borders */
-.rbc-addons-dnd .rbc-addons-dnd-row-body { border-color: var(--border) !important; }
-.rbc-addons-dnd .rbc-addons-dnd-drag-row { border-color: var(--border) !important; }
