@@ -76,7 +76,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
       const scheduler = schedulerRef.current?.instance
       if (scheduler && !scheduler.isDestroyed) {
         scheduler.element?.classList.remove('b-theme-svalbard-dark', 'b-theme-svalbard-light')
-        scheduler.refresh()
+        scheduler.renderContents()
       }
     }, 50)
     return () => clearTimeout(timer)
