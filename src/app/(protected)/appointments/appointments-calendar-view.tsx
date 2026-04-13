@@ -133,8 +133,8 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
           ? 'event-completed'
           : ''
 
-      const bgColor = isCancelled ? '#71717a' : (barberColor?.bg ?? '#3174ad')
-      const borderColor = isCancelled ? '#52525b' : (barberColor?.border ?? '#2563EB')
+      const bgColor = isCancelled ? '#71717a' : isCompleted ? '#22c55e' : (barberColor?.bg ?? '#3174ad')
+      const borderColor = isCancelled ? '#52525b' : isCompleted ? '#16a34a' : (barberColor?.border ?? '#2563EB')
 
       return {
         id: apt.id,
