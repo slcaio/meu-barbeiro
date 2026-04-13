@@ -4,8 +4,10 @@ import { useState, useCallback, useTransition, useMemo, useRef, useEffect } from
 import dynamic from 'next/dynamic'
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, addDays, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CreateAppointmentDialog } from './create-appointment-dialog'
 import { AppointmentDetailsDialog } from './appointment-details-dialog'
 import { updateAppointmentDate } from '@/app/appointments/actions'
@@ -207,6 +209,13 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
     setDate(new Date())
   }, [])
 
+  const handleCalendarSelect = useCallback((selectedDay: Date | undefined) => {
+    if (selectedDay) {
+      setDate(selectedDay)
+      setViewMode('day')
+    }
+  }, [])
+
   // ── Event handlers ──
   const handleScheduleClick = useCallback(({ date: clickedDate }: { date: Date }) => {
     if (clickedDate) {
@@ -304,13 +313,13 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
     }
     return {
       base: 'hourAndDay',
-      tickWidth: 60,
+      tickWidth: 200,
       timeResolution: { unit: 'minute' as const, increment: 30 },
       shiftIncrement: 1,
       shiftUnit: 'day' as const,
       headers: [
         { unit: 'day' as const, dateFormat: 'ddd DD/MM' },
-        { unit: 'hour' as const, dateFormat: 'HH' },
+        { unit: 'hour' as const, dateFormat: 'HH:mm' },
       ],
     }
   }, [viewMode])
@@ -336,6 +345,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
       )}
 
       {/* Toolbar */}
+
       <div className="flex flex-col gap-3 mb-4 flex-shrink-0">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
@@ -348,6 +358,21 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
             <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={goToNext}>
               <ChevronRight className="h-4 w-4" />
             </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9">
+                  <CalendarDays className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={handleCalendarSelect}
+                  locale={ptBR}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="min-w-0 flex-1 text-right sm:text-left sm:ml-2">
             <span className="text-sm sm:text-lg font-semibold capitalize leading-relaxed truncate">
@@ -355,7 +380,6 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
             </span>
           </div>
         </div>
-
         <div className="flex items-center justify-between gap-2">
           {/* Create appointment dialog (controlled) */}
           <div className="flex-1">
