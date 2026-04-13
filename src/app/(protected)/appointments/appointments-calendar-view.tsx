@@ -174,6 +174,26 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
     return { startDate: weekStart, endDate: weekEnd }
   }, [viewMode, date])
 
+  // Stable initial time span for Scheduler mount — never changes.
+  // All subsequent navigation is handled atomically via setTimeSpan() below.
+  const [initialTimeSpan] = useState(() => {
+    const start = startOfDay(new Date())
+    start.setHours(CALENDAR_START_HOUR, 0, 0, 0)
+    const end = startOfDay(new Date())
+    end.setHours(CALENDAR_END_HOUR, 59, 59, 999)
+    return { startDate: start, endDate: end }
+  })
+
+  // Atomically update start/end dates to avoid Bryntum "start > end" race condition.
+  // Passing startDate & endDate as separate dynamic props causes Bryntum to process
+  // them individually, leading to a transient invalid range when navigating backward.
+  useEffect(() => {
+    const scheduler = schedulerRef.current?.instance
+    if (scheduler && !scheduler.isDestroyed) {
+      scheduler.setTimeSpan(timeSpan.startDate, timeSpan.endDate)
+    }
+  }, [timeSpan])
+
   // ── Navigation ──
   const goToPrev = useCallback(() => {
     setDate(prev => viewMode === 'day' ? subDays(prev, 1) : subDays(prev, 7))
@@ -378,8 +398,8 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
           {...schedulerConfig}
           resources={resources}
           events={events}
-          startDate={timeSpan.startDate}
-          endDate={timeSpan.endDate}
+          startDate={initialTimeSpan.startDate}
+          endDate={initialTimeSpan.endDate}
           viewPreset={viewPreset}
           eventRenderer={eventRenderer}
           onScheduleClick={handleScheduleClick}
