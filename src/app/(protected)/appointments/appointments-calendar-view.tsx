@@ -14,7 +14,7 @@ import { updateAppointmentDate } from '@/app/appointments/actions'
 import { schedulerConfig, CALENDAR_START_HOUR, CALENDAR_END_HOUR } from './scheduler-config'
 import { useTheme } from 'next-themes'
 import type { BryntumScheduler } from '@bryntum/scheduler-react'
-import type { EventModel } from '@bryntum/scheduler'
+import type { EventModel, ResourceModel } from '@bryntum/scheduler'
 import type { AppointmentWithRelations, ServiceOption, ClientOption, BarberOption, PaymentMethodWithInstallments } from '@/types/database.types'
 
 // Bryntum CSS — structural + dark theme base (provides all component rendering)
@@ -67,6 +67,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<AppointmentWithRelations | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
+  const [selectedBarberId, setSelectedBarberId] = useState<string | undefined>(undefined)
   const [isPending, startTransition] = useTransition()
   const schedulerRef = useRef<BryntumScheduler>(null)
   const { resolvedTheme } = useTheme()
@@ -217,9 +218,11 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
   }, [])
 
   // ── Event handlers ──
-  const handleScheduleClick = useCallback(({ date: clickedDate }: { date: Date }) => {
+  const handleScheduleClick = useCallback(({ date: clickedDate, resourceRecord }: { date: Date; resourceRecord: ResourceModel }) => {
     if (clickedDate) {
       setSelectedDate(clickedDate)
+      const resId = resourceRecord ? String(resourceRecord.id) : undefined
+      setSelectedBarberId(resId && resId !== NO_BARBER_RESOURCE_ID ? resId : undefined)
       setIsDialogOpen(true)
     }
   }, [])
@@ -264,7 +267,10 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
   const handleOpenChange = (open: boolean) => {
     setIsDialogOpen(open)
     if (!open) {
-      setTimeout(() => setSelectedDate(undefined), 300)
+      setTimeout(() => {
+        setSelectedDate(undefined)
+        setSelectedBarberId(undefined)
+      }, 300)
     }
   }
 
@@ -390,6 +396,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
               isOpen={isDialogOpen}
               onOpenChange={handleOpenChange}
               initialDate={selectedDate}
+              initialBarberId={selectedBarberId}
             />
           </div>
 
