@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DollarSign, TrendingDown, TrendingUp } from 'lucide-react'
 import { AddTransactionDialog } from './add-transaction-dialog'
-import { TransactionList } from './transaction-list'
+import { TransactionSection } from './transaction-section'
 import { FinancialFilters } from './financial-filters'
 import { CommissionReportDialog } from './commission-report-dialog'
 import { StatementReportDialog } from './statement-report-dialog'
@@ -248,15 +248,8 @@ export default async function FinancialPage(props: { searchParams: Promise<Searc
         <CategoryChart data={expenseCategoryData} type="expense" />
       </div>
 
-      {/* Transaction List */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-semibold">Extrato Mensal</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <TransactionList transactions={transactions} />
-        </CardContent>
-      </Card>
+      {/* Transaction List with Search & Pagination */}
+      <TransactionSection transactions={transactions} />
     </div>
   )
 }
