@@ -4,15 +4,17 @@ import { useState, useCallback, useTransition, useMemo, useRef, useEffect } from
 import dynamic from 'next/dynamic'
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, addDays, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CreateAppointmentDialog } from './create-appointment-dialog'
 import { AppointmentDetailsDialog } from './appointment-details-dialog'
 import { updateAppointmentDate } from '@/app/appointments/actions'
 import { schedulerConfig, CALENDAR_START_HOUR, CALENDAR_END_HOUR } from './scheduler-config'
 import { useTheme } from 'next-themes'
 import type { BryntumScheduler } from '@bryntum/scheduler-react'
-import type { EventModel } from '@bryntum/scheduler'
+import type { EventModel, ResourceModel } from '@bryntum/scheduler'
 import type { AppointmentWithRelations, ServiceOption, ClientOption, BarberOption, PaymentMethodWithInstallments } from '@/types/database.types'
 
 // Bryntum CSS — structural + dark theme base (provides all component rendering)
@@ -65,6 +67,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<AppointmentWithRelations | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
+  const [selectedBarberId, setSelectedBarberId] = useState<string | undefined>(undefined)
   const [isPending, startTransition] = useTransition()
   const schedulerRef = useRef<BryntumScheduler>(null)
   const { resolvedTheme } = useTheme()
@@ -130,8 +133,8 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
           ? 'event-completed'
           : ''
 
-      const bgColor = isCancelled ? '#71717a' : (barberColor?.bg ?? '#3174ad')
-      const borderColor = isCancelled ? '#52525b' : (barberColor?.border ?? '#2563EB')
+      const bgColor = isCancelled ? '#71717a' : isCompleted ? '#22c55e' : (barberColor?.bg ?? '#3174ad')
+      const borderColor = isCancelled ? '#52525b' : isCompleted ? '#16a34a' : (barberColor?.border ?? '#2563EB')
 
       return {
         id: apt.id,
@@ -174,6 +177,26 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
     return { startDate: weekStart, endDate: weekEnd }
   }, [viewMode, date])
 
+  // Stable initial time span for Scheduler mount — never changes.
+  // All subsequent navigation is handled atomically via setTimeSpan() below.
+  const [initialTimeSpan] = useState(() => {
+    const start = startOfDay(new Date())
+    start.setHours(CALENDAR_START_HOUR, 0, 0, 0)
+    const end = startOfDay(new Date())
+    end.setHours(CALENDAR_END_HOUR, 59, 59, 999)
+    return { startDate: start, endDate: end }
+  })
+
+  // Atomically update start/end dates to avoid Bryntum "start > end" race condition.
+  // Passing startDate & endDate as separate dynamic props causes Bryntum to process
+  // them individually, leading to a transient invalid range when navigating backward.
+  useEffect(() => {
+    const scheduler = schedulerRef.current?.instance
+    if (scheduler && !scheduler.isDestroyed) {
+      scheduler.setTimeSpan(timeSpan.startDate, timeSpan.endDate)
+    }
+  }, [timeSpan])
+
   // ── Navigation ──
   const goToPrev = useCallback(() => {
     setDate(prev => viewMode === 'day' ? subDays(prev, 1) : subDays(prev, 7))
@@ -187,10 +210,19 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
     setDate(new Date())
   }, [])
 
+  const handleCalendarSelect = useCallback((selectedDay: Date | undefined) => {
+    if (selectedDay) {
+      setDate(selectedDay)
+      setViewMode('day')
+    }
+  }, [])
+
   // ── Event handlers ──
-  const handleScheduleClick = useCallback(({ date: clickedDate }: { date: Date }) => {
+  const handleScheduleClick = useCallback(({ date: clickedDate, resourceRecord }: { date: Date; resourceRecord: ResourceModel }) => {
     if (clickedDate) {
       setSelectedDate(clickedDate)
+      const resId = resourceRecord ? String(resourceRecord.id) : undefined
+      setSelectedBarberId(resId && resId !== NO_BARBER_RESOURCE_ID ? resId : undefined)
       setIsDialogOpen(true)
     }
   }, [])
@@ -235,7 +267,10 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
   const handleOpenChange = (open: boolean) => {
     setIsDialogOpen(open)
     if (!open) {
-      setTimeout(() => setSelectedDate(undefined), 300)
+      setTimeout(() => {
+        setSelectedDate(undefined)
+        setSelectedBarberId(undefined)
+      }, 300)
     }
   }
 
@@ -292,7 +327,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
     }
     return {
       base: 'hourAndDay',
-      tickWidth: 60,
+      tickWidth: 200,
       timeResolution: { unit: 'minute' as const, increment: 30 },
       shiftIncrement: 1,
       shiftUnit: 'day' as const,
@@ -324,6 +359,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
       )}
 
       {/* Toolbar */}
+
       <div className="flex flex-col gap-3 mb-4 flex-shrink-0">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
@@ -336,6 +372,21 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
             <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={goToNext}>
               <ChevronRight className="h-4 w-4" />
             </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9">
+                  <CalendarDays className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={handleCalendarSelect}
+                  locale={ptBR}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="min-w-0 flex-1 text-right sm:text-left sm:ml-2">
             <span className="text-sm sm:text-lg font-semibold capitalize leading-relaxed truncate">
@@ -343,7 +394,6 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
             </span>
           </div>
         </div>
-
         <div className="flex items-center justify-between gap-2">
           {/* Create appointment dialog (controlled) */}
           <div className="flex-1">
@@ -354,6 +404,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
               isOpen={isDialogOpen}
               onOpenChange={handleOpenChange}
               initialDate={selectedDate}
+              initialBarberId={selectedBarberId}
             />
           </div>
 
@@ -386,8 +437,8 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
           {...schedulerConfig}
           resources={resources}
           events={events}
-          startDate={timeSpan.startDate}
-          endDate={timeSpan.endDate}
+          startDate={initialTimeSpan.startDate}
+          endDate={initialTimeSpan.endDate}
           viewPreset={viewPreset}
           eventRenderer={eventRenderer}
           onScheduleClick={handleScheduleClick}
