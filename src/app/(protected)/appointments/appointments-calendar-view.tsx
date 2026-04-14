@@ -301,15 +301,15 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
     return format(date, "MMMM yyyy", { locale: ptBR })
   }, [date, viewMode])
 
-  // ── View preset configuration ──
-  const formatDayHeader = useCallback(({ startDate }: { startDate: Date }) => {
-    const fullName = format(startDate, 'EEEE', { locale: ptBR }) // e.g. "terça-feira"
-    const shortName = fullName.split('-')[0] // e.g. "terça"
-    const dayName = shortName.charAt(0).toUpperCase() + shortName.slice(1) // e.g. "Terça"
-    const dateStr = format(startDate, 'dd/MM') // e.g. "14/04"
-    return `${dayName} ${dateStr}`
+  // ── Renderer for day header in Portuguese ──
+  const dayHeaderRenderer = useCallback((startDate: Date) => {
+    const d = new Date(startDate)
+    if (isNaN(d.getTime())) return ''
+    const dayName = format(d, 'EEEE', { locale: ptBR }).split('-')[0]
+    return `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} ${format(d, 'dd/MM')}`
   }, [])
 
+  // ── View preset configuration ──
   const viewPreset = useMemo(() => {
     if (viewMode === 'day') {
       return {
@@ -319,7 +319,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
         shiftIncrement: 1,
         shiftUnit: 'day' as const,
         headers: [
-          { unit: 'day' as const, renderer: formatDayHeader },
+          { unit: 'day' as const, renderer: dayHeaderRenderer },
           { unit: 'hour' as const, dateFormat: 'HH:mm' },
           { unit: 'minute' as const, increment: 30, dateFormat: 'mm' },
         ],
@@ -332,11 +332,11 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
       shiftIncrement: 1,
       shiftUnit: 'day' as const,
       headers: [
-        { unit: 'day' as const, renderer: formatDayHeader },
-        { unit: 'hour' as const, dateFormat: 'HH' },
+        { unit: 'day' as const, renderer: dayHeaderRenderer },
+        { unit: 'hour' as const, dateFormat: 'HH:mm' },
       ],
     }
-  }, [viewMode, formatDayHeader])
+  }, [viewMode, dayHeaderRenderer])
 
   return (
     <div className="h-[calc(100vh-200px)] sm:h-[calc(100vh-140px)] min-h-[500px] sm:min-h-[600px] bg-card p-3 sm:p-6 rounded-xl shadow-sm border flex flex-col overflow-hidden">
