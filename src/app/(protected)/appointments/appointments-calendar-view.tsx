@@ -302,8 +302,10 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
   }, [date, viewMode])
 
   // ── Renderer for day header in Portuguese ──
-  const dayHeaderRenderer = useCallback((startDate: Date) => {
-    const d = new Date(startDate)
+  // Bryntum TS types declare an object param, but runtime may pass positional args
+  const dayHeaderRenderer = useCallback((data: { startDate: Date; endDate: Date; headerConfig: object }) => {
+    const rawStart = data instanceof Date ? data : data.startDate
+    const d = new Date(rawStart)
     if (isNaN(d.getTime())) return ''
     const dayName = format(d, 'EEEE', { locale: ptBR }).split('-')[0]
     return `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} ${format(d, 'dd/MM')}`
