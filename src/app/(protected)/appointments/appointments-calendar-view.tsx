@@ -302,7 +302,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
   }, [date, viewMode])
 
   // ── View preset configuration ──
-  const formatDayHeader = useCallback((startDate: Date) => {
+  const formatDayHeader = useCallback(({ startDate }: { startDate: Date }) => {
     const fullName = format(startDate, 'EEEE', { locale: ptBR }) // e.g. "terça-feira"
     const shortName = fullName.split('-')[0] // e.g. "terça"
     const dayName = shortName.charAt(0).toUpperCase() + shortName.slice(1) // e.g. "Terça"
