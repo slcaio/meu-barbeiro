@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { PackagePlus } from 'lucide-react'
+import { PackagePlus, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
@@ -22,6 +22,7 @@ interface StockEntryDialogProps {
 
 export function StockEntryDialog({ products }: StockEntryDialogProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [productId, setProductId] = useState('')
   const [quantity, setQuantity] = useState('')
   const [unitCost, setUnitCost] = useState('')
@@ -41,6 +42,7 @@ export function StockEntryDialog({ products }: StockEntryDialogProps) {
   }
 
   const handleSubmit = async (formData: FormData) => {
+    setIsLoading(true)
     formData.set('product_id', productId)
     formData.set('quantity', quantity)
     formData.set('unit_cost', numericUnitCost.toString())
@@ -55,6 +57,7 @@ export function StockEntryDialog({ products }: StockEntryDialogProps) {
     } else if (result?.error) {
       alert(result.error)
     }
+    setIsLoading(false)
   }
 
   return (
@@ -123,11 +126,13 @@ export function StockEntryDialog({ products }: StockEntryDialogProps) {
           </p>
 
           <div className="pt-4 flex justify-end space-x-2">
-            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setIsOpen(false)} disabled={isLoading}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={!productId || numericQuantity < 1}>
-              Registrar Entrada
+            <Button type="submit" disabled={isLoading || !productId || numericQuantity < 1}>
+              {isLoading ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Registrando...</>
+              ) : 'Registrar Entrada'}
             </Button>
           </div>
         </form>

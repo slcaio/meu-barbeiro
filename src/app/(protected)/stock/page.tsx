@@ -8,6 +8,7 @@ import { PendingEntriesSection } from './pending-entries-section'
 import { CreateProductDialog } from './create-product-dialog'
 import { StockEntryDialog } from './stock-entry-dialog'
 import { StockSaleDialog } from './stock-sale-dialog'
+import type { PaymentMethodWithInstallments } from '@/types/database.types'
 
 export default async function StockPage() {
   const supabase = await createClient()
@@ -27,10 +28,12 @@ export default async function StockPage() {
 
   const { data: paymentMethods } = await supabase
     .from('payment_methods')
-    .select('*')
+    .select('id, name, fee_type, fee_value, supports_installments, payment_method_installments(installment_number, fee_percentage)')
     .eq('barbershop_id', barbershop.id)
     .eq('is_active', true)
     .order('name')
+
+  const typedPaymentMethods = (paymentMethods ?? []) as unknown as PaymentMethodWithInstallments[]
 
   const lowStockCount = products.filter(p => p.min_stock > 0 && p.current_stock < p.min_stock).length
   const totalStockValue = products.reduce((sum, p) => sum + (p.cost_price * p.current_stock), 0)
@@ -48,7 +51,7 @@ export default async function StockPage() {
         <div className="flex flex-wrap gap-2">
           <CreateProductDialog />
           <StockEntryDialog products={products} />
-          <StockSaleDialog products={products} paymentMethods={paymentMethods ?? []} />
+          <StockSaleDialog products={products} paymentMethods={typedPaymentMethods} />
         </div>
       </div>
 
@@ -110,7 +113,7 @@ export default async function StockPage() {
           <CardTitle className="text-base font-semibold">Produtos</CardTitle>
         </CardHeader>
         <CardContent>
-          <ProductList products={products} paymentMethods={paymentMethods ?? []} />
+          <ProductList products={products} paymentMethods={typedPaymentMethods} />
         </CardContent>
       </Card>
 

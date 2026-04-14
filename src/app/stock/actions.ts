@@ -40,6 +40,7 @@ const stockSaleSchema = z.object({
   quantity: z.coerce.number().int().min(1, 'Quantidade deve ser ≥ 1'),
   unit_price: z.coerce.number().min(0.01, 'Preço unitário deve ser positivo'),
   payment_method_id: z.string().uuid().optional().or(z.literal('')),
+  installments: z.coerce.number().int().min(1).default(1),
   notes: z.string().optional().or(z.literal('')),
 })
 
@@ -314,6 +315,7 @@ export async function registerStockSale(formData: FormData) {
     quantity: formData.get('quantity'),
     unit_price: formData.get('unit_price'),
     payment_method_id: formData.get('payment_method_id') ?? '',
+    installments: formData.get('installments') ?? '1',
     notes: formData.get('notes') ?? '',
   }
 
@@ -395,6 +397,54 @@ export async function registerStockSale(formData: FormData) {
     .from('stock_movements')
     .update({ reference_id: record.id })
     .eq('id', movement.id)
+
+  // 5. Handle payment method fee (installments)
+  const installments = validation.data.installments
+  if (paymentMethodId) {
+    const { data: paymentMethod } = await supabase
+      .from('payment_methods')
+      .select('name, fee_type, fee_value, supports_installments')
+      .eq('id', paymentMethodId)
+      .single()
+
+    if (paymentMethod) {
+      let feeAmount = 0
+      let feeDescription = ''
+
+      if (installments > 1 && paymentMethod.supports_installments) {
+        const { data: installmentTier } = await supabase
+          .from('payment_method_installments')
+          .select('fee_percentage')
+          .eq('payment_method_id', paymentMethodId)
+          .eq('installment_number', installments)
+          .single()
+
+        if (installmentTier && installmentTier.fee_percentage > 0) {
+          feeAmount = totalAmount * (installmentTier.fee_percentage / 100)
+          feeDescription = `Taxa ${paymentMethod.name} ${installments}x - ${installmentTier.fee_percentage}%`
+        }
+      } else {
+        if (paymentMethod.fee_type === 'percentage' && paymentMethod.fee_value > 0) {
+          feeAmount = totalAmount * (paymentMethod.fee_value / 100)
+          feeDescription = `Taxa ${paymentMethod.name} - ${paymentMethod.fee_value}%`
+        } else if (paymentMethod.fee_type === 'fixed' && paymentMethod.fee_value > 0) {
+          feeAmount = paymentMethod.fee_value
+          feeDescription = `Taxa ${paymentMethod.name} - R$ ${paymentMethod.fee_value.toFixed(2)}`
+        }
+      }
+
+      if (feeAmount > 0) {
+        await supabase.from('financial_records').insert({
+          barbershop_id: barbershop.id,
+          type: 'expense',
+          amount: feeAmount,
+          category: 'Taxa de Pagamento',
+          description: feeDescription,
+          payment_method_id: paymentMethodId,
+        })
+      }
+    }
+  }
 
   revalidatePath('/stock')
   revalidatePath('/financial')
