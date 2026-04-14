@@ -68,6 +68,7 @@ export function TrendChart({ data }: TrendChartProps) {
                 iconType="circle"
                 iconSize={8}
                 wrapperStyle={{ fontSize: 12, color: 'var(--muted-foreground)' }}
+                
               />
               <Area
                 type="monotone"
