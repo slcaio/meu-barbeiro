@@ -12,7 +12,7 @@ import {
   Scissors,
   Users,
   X,
-  PanelLeftClose,
+  Package,
 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -25,6 +25,7 @@ const navigation = [
   { name: 'Agenda', href: '/appointments', icon: Calendar },
   { name: 'Clientes', href: '/clients', icon: Users },
   { name: 'Financeiro', href: '/financial', icon: DollarSign },
+  { name: 'Estoque', href: '/stock', icon: Package },
   { name: 'Configurações', href: '/settings', icon: Settings },
 ]
 
