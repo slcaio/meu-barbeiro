@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { getProducts, getPendingEntries } from '@/app/stock/actions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Package, AlertTriangle, Clock, DollarSign } from 'lucide-react'
+import { Package, AlertTriangle, Clock, DollarSign, TrendingUp } from 'lucide-react'
 import { ProductList } from './product-list'
 import { PendingEntriesSection } from './pending-entries-section'
 import { CreateProductDialog } from './create-product-dialog'
@@ -37,6 +37,7 @@ export default async function StockPage() {
 
   const lowStockCount = products.filter(p => p.min_stock > 0 && p.current_stock < p.min_stock).length
   const totalStockValue = products.reduce((sum, p) => sum + (p.cost_price * p.current_stock), 0)
+  const totalSaleValue = products.reduce((sum, p) => sum + (p.sale_price * p.current_stock), 0)
 
   const formatBRL = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
@@ -55,7 +56,7 @@ export default async function StockPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <Card className="relative overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Produtos</CardTitle>
@@ -104,6 +105,19 @@ export default async function StockPage() {
           <CardContent>
             <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatBRL(totalStockValue)}</div>
             <p className="text-xs text-muted-foreground">custo total</p>
+          </CardContent>
+        </Card>
+
+        <Card className="relative overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Valor a Preço de Venda</CardTitle>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10">
+              <TrendingUp className="h-5 w-5 text-violet-500" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-violet-600 dark:text-violet-400">{formatBRL(totalSaleValue)}</div>
+            <p className="text-xs text-muted-foreground">preço de venda total</p>
           </CardContent>
         </Card>
       </div>
