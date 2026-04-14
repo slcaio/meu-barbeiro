@@ -11,7 +11,8 @@ import {
   Menu,
   Scissors,
   Users,
-  X
+  X,
+  PanelLeftClose,
 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -33,22 +34,24 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [desktopOpen, setDesktopOpen] = useState(true)
 
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile sidebar backdrop */}
-      {sidebarOpen && (
+      {mobileOpen && (
         <div 
           className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
-          onClick={() => setSidebarOpen(false)}
+          onClick={() => setMobileOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col bg-sidebar border-r border-sidebar-border transition-transform duration-300 ease-in-out md:translate-x-0",
-        sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        "fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col bg-sidebar border-r border-sidebar-border transition-transform duration-300 ease-in-out",
+        mobileOpen ? "translate-x-0" : "-translate-x-full",
+        desktopOpen ? "md:translate-x-0" : "md:-translate-x-full"
       )}>
         {/* Sidebar Header */}
         <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-6">
@@ -58,12 +61,19 @@ export default function DashboardLayout({
           <Link href="/dashboard" className="flex items-center">
             <span className="text-lg font-bold text-sidebar-foreground">Meu Barbeiro</span>
           </Link>
-          {/* Mobile close button */}
+          {/* Mobile: close button */}
           <button
-            className="ml-auto md:hidden text-sidebar-foreground/60 hover:text-sidebar-foreground"
-            onClick={() => setSidebarOpen(false)}
+            className="ml-auto md:hidden text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"
+            onClick={() => setMobileOpen(false)}
           >
             <X className="h-5 w-5" />
+          </button>
+          {/* Desktop: collapse button */}
+          <button
+            className="ml-auto hidden md:flex text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"
+            onClick={() => setDesktopOpen(false)}
+          >
+            <PanelLeftClose className="h-5 w-5" />
           </button>
         </div>
 
@@ -75,7 +85,7 @@ export default function DashboardLayout({
               <Link
                 key={item.name}
                 href={item.href}
-                onClick={() => setSidebarOpen(false)}
+                onClick={() => setMobileOpen(false)}
                 className={cn(
                   "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                   isActive
@@ -116,18 +126,37 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main Content */}
-      <div className="flex flex-1 flex-col md:pl-[280px]">
-        {/* Mobile Header */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-md px-4 md:hidden">
+      <div className={cn(
+        "flex flex-1 flex-col transition-[padding] duration-300 ease-in-out",
+        desktopOpen ? "md:pl-[280px]" : "md:pl-0"
+      )}>
+        {/* Header — visible on all screen sizes */}
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-md px-4">
+          {/* Mobile: open sidebar */}
           <button
             type="button"
-            className="inline-flex items-center justify-center rounded-lg p-2 text-foreground/60 hover:bg-accent hover:text-foreground transition-colors"
-            onClick={() => setSidebarOpen(true)}
+            className="md:hidden inline-flex items-center justify-center rounded-lg p-2 text-foreground/60 hover:bg-accent hover:text-foreground transition-colors"
+            onClick={() => setMobileOpen(true)}
           >
             <span className="sr-only">Abrir menu</span>
             <Menu className="h-5 w-5" />
           </button>
-          <div className="flex items-center gap-2">
+          {/* Desktop: toggle sidebar — only visible when sidebar is closed */}
+          <button
+            type="button"
+            className={cn(
+              "items-center justify-center rounded-lg p-2 text-foreground/60 hover:bg-accent hover:text-foreground transition-colors",
+              desktopOpen ? "hidden" : "hidden md:inline-flex"
+            )}
+            onClick={() => setDesktopOpen(prev => !prev)}
+          >
+            <span className="sr-only">Toggle menu</span>
+            <Menu className="h-5 w-5" />
+          </button>
+          <div className={cn(
+            "flex items-center gap-2",
+            desktopOpen ? "md:hidden" : ""
+          )}>
             <Scissors className="h-5 w-5 text-primary" />
             <span className="text-base font-semibold text-foreground">Meu Barbeiro</span>
           </div>
