@@ -432,6 +432,7 @@ export interface Database {
           description: string | null
           category: string
           payment_method_id: string | null
+          stock_movement_id: string | null
           record_date: string
           created_at: string
         }
@@ -443,6 +444,7 @@ export interface Database {
           description?: string | null
           category?: string
           payment_method_id?: string | null
+          stock_movement_id?: string | null
           record_date?: string
           created_at?: string
         }
@@ -454,6 +456,7 @@ export interface Database {
           description?: string | null
           category?: string
           payment_method_id?: string | null
+          stock_movement_id?: string | null
           record_date?: string
           created_at?: string
         }
@@ -469,6 +472,128 @@ export interface Database {
             columns: ["payment_method_id"]
             referencedRelation: "payment_methods"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_records_stock_movement_id_fkey"
+            columns: ["stock_movement_id"]
+            referencedRelation: "stock_movements"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      products: {
+        Row: {
+          id: string
+          barbershop_id: string
+          name: string
+          description: string | null
+          cost_price: number
+          sale_price: number
+          current_stock: number
+          min_stock: number
+          unit: string
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          barbershop_id: string
+          name: string
+          description?: string | null
+          cost_price?: number
+          sale_price: number
+          current_stock?: number
+          min_stock?: number
+          unit?: string
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          barbershop_id?: string
+          name?: string
+          description?: string | null
+          cost_price?: number
+          sale_price?: number
+          current_stock?: number
+          min_stock?: number
+          unit?: string
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_barbershop_id_fkey"
+            columns: ["barbershop_id"]
+            referencedRelation: "barbershops"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      stock_movements: {
+        Row: {
+          id: string
+          product_id: string
+          barbershop_id: string
+          type: 'entry' | 'exit' | 'adjustment'
+          quantity: number
+          unit_cost: number | null
+          total_cost: number | null
+          source: 'manual' | 'sale' | 'purchase' | 'adjustment'
+          reference_id: string | null
+          financial_status: 'none' | 'pending' | 'settled'
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          product_id: string
+          barbershop_id: string
+          type: 'entry' | 'exit' | 'adjustment'
+          quantity: number
+          unit_cost?: number | null
+          total_cost?: number | null
+          source: 'manual' | 'sale' | 'purchase' | 'adjustment'
+          reference_id?: string | null
+          financial_status?: 'none' | 'pending' | 'settled'
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          product_id?: string
+          barbershop_id?: string
+          type?: 'entry' | 'exit' | 'adjustment'
+          quantity?: number
+          unit_cost?: number | null
+          total_cost?: number | null
+          source?: 'manual' | 'sale' | 'purchase' | 'adjustment'
+          reference_id?: string | null
+          financial_status?: 'none' | 'pending' | 'settled'
+          notes?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_barbershop_id_fkey"
+            columns: ["barbershop_id"]
+            referencedRelation: "barbershops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_reference_id_fkey"
+            columns: ["reference_id"]
+            referencedRelation: "financial_records"
+            referencedColumns: ["id"]
           }
         ]
       }
@@ -477,7 +602,13 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      increment_stock: {
+        Args: {
+          p_product_id: string
+          p_quantity: number
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
@@ -497,6 +628,8 @@ export type AppointmentRow = Database['public']['Tables']['appointments']['Row']
 export type FinancialRecord = Database['public']['Tables']['financial_records']['Row']
 export type Category = Database['public']['Tables']['categories']['Row']
 export type Barbershop = Database['public']['Tables']['barbershops']['Row']
+export type Product = Database['public']['Tables']['products']['Row']
+export type StockMovement = Database['public']['Tables']['stock_movements']['Row']
 
 // Partial types matching common select queries
 export type ServiceOption = Pick<Service, 'id' | 'name' | 'price' | 'duration_minutes'>
