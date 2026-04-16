@@ -52,7 +52,7 @@ export function AppointmentList({ appointments, paymentMethods = [] }: { appoint
               {new Date(apt.appointment_date).toLocaleDateString('pt-BR')} às {new Date(apt.appointment_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
             </p>
             <p className="text-sm text-muted-foreground">
-              {apt.services?.name} • {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(apt.total_amount)}
+              {apt.appointment_services.map(as => as.services?.name).filter(Boolean).join(', ')} • {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(apt.total_amount)}
             </p>
             {apt.notes && <p className="text-xs text-muted-foreground/70 mt-1 italic">"{apt.notes}"</p>}
           </div>

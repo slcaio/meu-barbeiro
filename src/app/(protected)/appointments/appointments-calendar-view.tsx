@@ -119,7 +119,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
   const events = useMemo(() => {
     return appointments.map(apt => {
       const startDate = new Date(apt.appointment_date)
-      const duration = apt.services?.duration_minutes || 30
+      const duration = apt.appointment_services.reduce((sum, as) => sum + (as.services?.duration_minutes || 0), 0) || 30
       const endDate = new Date(startDate.getTime() + duration * 60000)
       const barberId = apt.barber_id || NO_BARBER_RESOURCE_ID
       const barberColor = apt.barber_id ? barberColorMap.get(apt.barber_id) : null
@@ -136,10 +136,15 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
       const bgColor = isCancelled ? '#71717a' : isCompleted ? '#22c55e' : (barberColor?.bg ?? '#3174ad')
       const borderColor = isCancelled ? '#52525b' : isCompleted ? '#16a34a' : (barberColor?.border ?? '#2563EB')
 
+      const serviceNames = apt.appointment_services
+        .map(as => as.services?.name)
+        .filter(Boolean)
+        .join(', ')
+
       return {
         id: apt.id,
         resourceId: barberId,
-        name: `${apt.client_name} - ${apt.services?.name || 'Serviço'}`,
+        name: `${apt.client_name} - ${serviceNames || 'Serviço'}`,
         startDate,
         endDate,
         eventColor: bgColor,
@@ -148,12 +153,12 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
         // Custom data
         appointmentData: apt,
         clientName: apt.client_name,
-        serviceName: apt.services?.name ?? '',
+        serviceName: serviceNames,
         barberName: apt.barbers?.name ?? '',
         clientPhone: apt.client_phone,
         status: apt.status,
-        servicePrice: apt.services?.price,
-        serviceDuration: apt.services?.duration_minutes,
+        servicePrice: apt.total_amount,
+        serviceDuration: duration,
         notes: apt.notes,
         draggable: !isCancelled && !isCompleted,
         resizable: false,
@@ -456,6 +461,9 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
         isOpen={isDetailsOpen}
         onOpenChange={setIsDetailsOpen}
         paymentMethods={paymentMethods}
+        services={services}
+        clients={clients}
+        barbers={barbers}
       />
     </div>
   )

@@ -54,7 +54,7 @@ describe('Appointments Actions', () => {
         data: { user: { id: 'user-123' } },
       })
       const { createAppointment } = await import('./actions')
-      const formData = createFormData({ client_name: '', service_id: 'invalid' })
+      const formData = createFormData({ client_name: '', service_ids: '' })
       const result = await createAppointment(formData)
       expect(result).toEqual({ error: 'Dados inválidos. Verifique os campos.' })
     })
@@ -65,18 +65,21 @@ describe('Appointments Actions', () => {
       })
 
       const barbershopChain = mockChain(null, null)
-      const serviceChain = mockChain({ price: 50 })
+      const servicesChain = {
+        select: vi.fn().mockReturnThis(),
+        in: vi.fn().mockResolvedValue({ data: [{ id: '550e8400-e29b-41d4-a716-446655440000', price: 50 }], error: null }),
+      }
       
       mockFrom.mockImplementation((table: string) => {
         if (table === 'barbershops') return barbershopChain
-        if (table === 'services') return serviceChain
+        if (table === 'services') return servicesChain
         return mockChain()
       })
 
       const { createAppointment } = await import('./actions')
       const formData = createFormData({
         client_name: 'João Silva',
-        service_id: '550e8400-e29b-41d4-a716-446655440000',
+        service_ids: JSON.stringify(['550e8400-e29b-41d4-a716-446655440000']),
         barber_id: '',
         appointment_date: '2026-04-10T10:00:00.000Z',
       })
@@ -90,26 +93,119 @@ describe('Appointments Actions', () => {
       })
 
       const barbershopChain = mockChain({ id: 'barbershop-1' })
-      const serviceChain = mockChain({ price: 50 })
-      const insertChain = mockChain()
-      insertChain.insert = vi.fn().mockResolvedValue({ error: null })
+      const servicesChain = {
+        select: vi.fn().mockReturnThis(),
+        in: vi.fn().mockResolvedValue({ data: [{ id: '550e8400-e29b-41d4-a716-446655440000', price: 50 }], error: null }),
+      }
+      const appointmentInsertChain = {
+        insert: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: { id: 'apt-new' }, error: null }),
+      }
+      const appointmentServicesChain = {
+        insert: vi.fn().mockResolvedValue({ error: null }),
+      }
 
       mockFrom.mockImplementation((table: string) => {
         if (table === 'barbershops') return barbershopChain
-        if (table === 'services') return serviceChain
-        if (table === 'appointments') return insertChain
+        if (table === 'services') return servicesChain
+        if (table === 'appointments') return appointmentInsertChain
+        if (table === 'appointment_services') return appointmentServicesChain
         return mockChain()
       })
 
       const { createAppointment } = await import('./actions')
       const formData = createFormData({
         client_name: 'João Silva',
-        service_id: '550e8400-e29b-41d4-a716-446655440000',
+        service_ids: JSON.stringify(['550e8400-e29b-41d4-a716-446655440000']),
         barber_id: '',
         appointment_date: '2026-04-10T10:00:00.000Z',
       })
       const result = await createAppointment(formData)
       expect(result).toEqual({ success: 'Agendamento criado com sucesso!' })
+      expect(appointmentServicesChain.insert).toHaveBeenCalledWith([
+        { appointment_id: 'apt-new', service_id: '550e8400-e29b-41d4-a716-446655440000', price_at_time: 50 },
+      ])
+    })
+  })
+
+  describe('updateAppointment', () => {
+    it('retorna erro se não autenticado', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({ data: { user: null } })
+      const { updateAppointment } = await import('./actions')
+      const formData = createFormData({
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        client_name: 'João',
+        service_ids: JSON.stringify(['550e8400-e29b-41d4-a716-446655440000']),
+        appointment_date: '2026-04-10T10:00:00.000Z',
+      })
+      const result = await updateAppointment(formData)
+      expect(result).toEqual({ error: 'Usuário não autenticado.' })
+    })
+
+    it('retorna erro com dados inválidos', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: { id: 'user-123' } },
+      })
+      const { updateAppointment } = await import('./actions')
+      const formData = createFormData({ id: 'invalid', client_name: '' })
+      const result = await updateAppointment(formData)
+      expect(result).toEqual({ error: 'Dados inválidos. Verifique os campos.' })
+    })
+
+    it('atualiza agendamento com sucesso', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: { id: 'user-123' } },
+      })
+
+      const barbershopChain = mockChain({ id: 'barbershop-1' })
+      const servicesChain = {
+        select: vi.fn().mockReturnThis(),
+        in: vi.fn().mockResolvedValue({ data: [
+          { id: 'svc-1', price: 50 },
+          { id: 'svc-2', price: 30 },
+        ], error: null }),
+      }
+      const updateChain = {
+        update: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }
+      const deleteChain = {
+        delete: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }
+      const insertChain = {
+        insert: vi.fn().mockResolvedValue({ error: null }),
+      }
+
+      let appointmentCallCount = 0
+      let appointmentServicesCallCount = 0
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'barbershops') return barbershopChain
+        if (table === 'services') return servicesChain
+        if (table === 'appointments') return updateChain
+        if (table === 'appointment_services') {
+          appointmentServicesCallCount++
+          if (appointmentServicesCallCount === 1) return deleteChain
+          return insertChain
+        }
+        return mockChain()
+      })
+
+      const { updateAppointment } = await import('./actions')
+      const formData = createFormData({
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        client_name: 'João Silva',
+        service_ids: JSON.stringify(['svc-1', 'svc-2']),
+        barber_id: '',
+        appointment_date: '2026-04-15T14:00:00.000Z',
+      })
+      const result = await updateAppointment(formData)
+      expect(result).toEqual({ success: 'Agendamento atualizado com sucesso!' })
+      expect(insertChain.insert).toHaveBeenCalledWith([
+        { appointment_id: '550e8400-e29b-41d4-a716-446655440000', service_id: 'svc-1', price_at_time: 50 },
+        { appointment_id: '550e8400-e29b-41d4-a716-446655440000', service_id: 'svc-2', price_at_time: 30 },
+      ])
     })
   })
 

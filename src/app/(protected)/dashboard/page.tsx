@@ -271,7 +271,7 @@ async function RecentAppointmentsSection({ barbershopId }: { barbershopId: strin
   const supabase = await createClient()
   const { data: recentAppointments } = await supabase
     .from('appointments')
-    .select('*, services(name, price), barbers(name)')
+    .select('*, appointment_services(service_id, price_at_time, services(id, name, duration_minutes, price)), barbers(name)')
     .eq('barbershop_id', barbershopId)
     .order('appointment_date', { ascending: true })
     .gte('appointment_date', new Date().toISOString())
@@ -294,7 +294,7 @@ async function RecentAppointmentsSection({ barbershopId }: { barbershopId: strin
                 <div className="space-y-0.5">
                   <p className="text-sm font-medium leading-none">{apt.client_name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {apt.services?.name}{apt.barbers?.name ? ` • ${apt.barbers.name}` : ''} • {new Date(apt.appointment_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    {apt.appointment_services?.map((as: { services: { name: string } | null }) => as.services?.name).filter(Boolean).join(', ')}{apt.barbers?.name ? ` • ${apt.barbers.name}` : ''} • {new Date(apt.appointment_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
                 <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${

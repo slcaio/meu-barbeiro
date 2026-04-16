@@ -228,7 +228,6 @@ export interface Database {
         Row: {
           id: string
           barbershop_id: string
-          service_id: string
           user_id: string
           client_id: string | null
           barber_id: string | null
@@ -247,7 +246,6 @@ export interface Database {
         Insert: {
           id?: string
           barbershop_id: string
-          service_id: string
           user_id: string
           client_id?: string | null
           barber_id?: string | null
@@ -266,7 +264,6 @@ export interface Database {
         Update: {
           id?: string
           barbershop_id?: string
-          service_id?: string
           user_id?: string
           client_id?: string | null
           barber_id?: string | null
@@ -296,12 +293,6 @@ export interface Database {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "appointments_service_id_fkey"
-            columns: ["service_id"]
-            referencedRelation: "services"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "appointments_user_id_fkey"
             columns: ["user_id"]
             referencedRelation: "users"
@@ -317,6 +308,43 @@ export interface Database {
             foreignKeyName: "appointments_payment_method_id_fkey"
             columns: ["payment_method_id"]
             referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      appointment_services: {
+        Row: {
+          id: string
+          appointment_id: string
+          service_id: string
+          price_at_time: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          appointment_id: string
+          service_id: string
+          price_at_time: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          appointment_id?: string
+          service_id?: string
+          price_at_time?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_services_appointment_id_fkey"
+            columns: ["appointment_id"]
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_services_service_id_fkey"
+            columns: ["service_id"]
+            referencedRelation: "services"
             referencedColumns: ["id"]
           }
         ]
@@ -633,6 +661,7 @@ export type Category = Database['public']['Tables']['categories']['Row']
 export type Barbershop = Database['public']['Tables']['barbershops']['Row']
 export type Product = Database['public']['Tables']['products']['Row']
 export type StockMovement = Database['public']['Tables']['stock_movements']['Row']
+export type AppointmentServiceRow = Database['public']['Tables']['appointment_services']['Row']
 
 // Partial types matching common select queries
 export type ServiceOption = Pick<Service, 'id' | 'name' | 'price' | 'duration_minutes'>
@@ -647,9 +676,16 @@ export type PaymentMethodWithInstallments = PaymentMethodOption & {
   payment_method_installments: Pick<PaymentMethodInstallment, 'installment_number' | 'fee_percentage'>[]
 }
 
+// Single appointment_service row with joined service details
+export type AppointmentServiceWithDetails = {
+  service_id: string
+  price_at_time: number
+  services: Pick<Service, 'id' | 'name' | 'duration_minutes' | 'price'> | null
+}
+
 // Appointment with joined relations (from select with joins)
 export type AppointmentWithRelations = AppointmentRow & {
-  services: Pick<Service, 'name' | 'duration_minutes' | 'price'> | null
+  appointment_services: AppointmentServiceWithDetails[]
   barbers: Pick<Barber, 'id' | 'name'> | null
 }
 

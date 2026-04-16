@@ -9,10 +9,14 @@ const appointmentSchema = z.object({
   client_phone: z.string().nullish(),
   client_id: z.string().nullish(),
   is_new_client: z.string().nullish(),
-  service_id: z.string().uuid('Serviço inválido'),
+  service_ids: z.string().min(1, 'Selecione ao menos um serviço'),
   barber_id: z.string().uuid().optional().or(z.literal('')),
   appointment_date: z.string().datetime(), // ISO string from frontend
   notes: z.string().nullish(),
+})
+
+const updateAppointmentSchema = appointmentSchema.extend({
+  id: z.string().uuid('ID do agendamento inválido'),
 })
 
 export async function createAppointment(formData: FormData) {
@@ -25,20 +29,28 @@ export async function createAppointment(formData: FormData) {
     client_phone: formData.get('client_phone'),
     client_id: formData.get('client_id'),
     is_new_client: formData.get('is_new_client'),
-    service_id: formData.get('service_id'),
+    service_ids: formData.get('service_ids'),
     barber_id: formData.get('barber_id'),
-    appointment_date: formData.get('appointment_date'), // Expecting ISO string or similar
+    appointment_date: formData.get('appointment_date'),
     notes: formData.get('notes'),
   }
 
-  // Need to handle date parsing carefully if it comes from native input
-  // but let's assume the frontend sends a proper ISO string or we parse it
-  
   const validation = appointmentSchema.safeParse(rawData)
   
   if (!validation.success) {
     console.error(validation.error)
     return { error: 'Dados inválidos. Verifique os campos.' }
+  }
+
+  // Parse service_ids JSON array
+  let serviceIds: string[]
+  try {
+    serviceIds = JSON.parse(validation.data.service_ids)
+    if (!Array.isArray(serviceIds) || serviceIds.length === 0) {
+      return { error: 'Selecione ao menos um serviço.' }
+    }
+  } catch {
+    return { error: 'Dados de serviços inválidos.' }
   }
 
   const { data: barbershop } = await supabase
@@ -71,40 +83,178 @@ export async function createAppointment(formData: FormData) {
     finalClientId = newClient.id
   }
 
-  // Get service price for total_amount
-  const { data: service } = await supabase
+  // Fetch all selected services with prices
+  const { data: services } = await supabase
     .from('services')
-    .select('price')
-    .eq('id', validation.data.service_id)
-    .single()
+    .select('id, price')
+    .in('id', serviceIds)
     
-  if (!service) return { error: 'Serviço não encontrado.' }
+  if (!services || services.length === 0) return { error: 'Serviços não encontrados.' }
 
-  const { error } = await supabase
+  const totalAmount = services.reduce((sum, s) => sum + s.price, 0)
+
+  const { data: appointment, error } = await supabase
     .from('appointments')
     .insert({
       barbershop_id: barbershop.id,
-      service_id: validation.data.service_id,
       user_id: user.id,
       client_id: finalClientId || null,
       barber_id: validation.data.barber_id || null,
       client_name: validation.data.client_name,
       client_phone: validation.data.client_phone || '',
       appointment_date: validation.data.appointment_date,
-      total_amount: service.price,
+      total_amount: totalAmount,
       notes: validation.data.notes || null,
       status: 'scheduled',
       payment_status: 'pending',
     })
+    .select('id')
+    .single()
 
-  if (error) {
+  if (error || !appointment) {
     console.error('Error creating appointment:', error)
     return { error: 'Erro ao criar agendamento.' }
+  }
+
+  // Insert appointment_services junction rows
+  const serviceRows = services.map(s => ({
+    appointment_id: appointment.id,
+    service_id: s.id,
+    price_at_time: s.price,
+  }))
+
+  const { error: servicesError } = await supabase
+    .from('appointment_services')
+    .insert(serviceRows)
+
+  if (servicesError) {
+    console.error('Error inserting appointment services:', servicesError)
+    return { error: 'Erro ao vincular serviços ao agendamento.' }
   }
 
   revalidatePath('/appointments')
   revalidatePath('/dashboard')
   return { success: 'Agendamento criado com sucesso!' }
+}
+
+export async function updateAppointment(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Usuário não autenticado.' }
+
+  const rawData = {
+    id: formData.get('id'),
+    client_name: formData.get('client_name'),
+    client_phone: formData.get('client_phone'),
+    client_id: formData.get('client_id'),
+    is_new_client: formData.get('is_new_client'),
+    service_ids: formData.get('service_ids'),
+    barber_id: formData.get('barber_id'),
+    appointment_date: formData.get('appointment_date'),
+    notes: formData.get('notes'),
+  }
+
+  const validation = updateAppointmentSchema.safeParse(rawData)
+
+  if (!validation.success) {
+    console.error(validation.error)
+    return { error: 'Dados inválidos. Verifique os campos.' }
+  }
+
+  // Parse service_ids JSON array
+  let serviceIds: string[]
+  try {
+    serviceIds = JSON.parse(validation.data.service_ids)
+    if (!Array.isArray(serviceIds) || serviceIds.length === 0) {
+      return { error: 'Selecione ao menos um serviço.' }
+    }
+  } catch {
+    return { error: 'Dados de serviços inválidos.' }
+  }
+
+  const { data: barbershop } = await supabase
+    .from('barbershops')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (!barbershop) return { error: 'Barbearia não encontrada.' }
+
+  // Handle New Client Creation
+  let finalClientId = validation.data.client_id
+
+  if (validation.data.is_new_client === 'true') {
+    const { data: newClient, error: createClientError } = await supabase
+      .from('clients')
+      .insert({
+        barbershop_id: barbershop.id,
+        name: validation.data.client_name,
+        phone: validation.data.client_phone || null,
+      })
+      .select('id')
+      .single()
+
+    if (createClientError) {
+      console.error('Error creating new client:', createClientError)
+      return { error: 'Erro ao criar novo cliente.' }
+    }
+
+    finalClientId = newClient.id
+  }
+
+  // Fetch all selected services with prices
+  const { data: services } = await supabase
+    .from('services')
+    .select('id, price')
+    .in('id', serviceIds)
+
+  if (!services || services.length === 0) return { error: 'Serviços não encontrados.' }
+
+  const totalAmount = services.reduce((sum, s) => sum + s.price, 0)
+
+  // Update appointment row
+  const { error: updateError } = await supabase
+    .from('appointments')
+    .update({
+      client_id: finalClientId || null,
+      barber_id: validation.data.barber_id || null,
+      client_name: validation.data.client_name,
+      client_phone: validation.data.client_phone || '',
+      appointment_date: validation.data.appointment_date,
+      total_amount: totalAmount,
+      notes: validation.data.notes || null,
+    })
+    .eq('id', validation.data.id)
+
+  if (updateError) {
+    console.error('Error updating appointment:', updateError)
+    return { error: 'Erro ao atualizar agendamento.' }
+  }
+
+  // Replace appointment_services: delete old, insert new
+  await supabase
+    .from('appointment_services')
+    .delete()
+    .eq('appointment_id', validation.data.id)
+
+  const serviceRows = services.map(s => ({
+    appointment_id: validation.data.id,
+    service_id: s.id,
+    price_at_time: s.price,
+  }))
+
+  const { error: servicesError } = await supabase
+    .from('appointment_services')
+    .insert(serviceRows)
+
+  if (servicesError) {
+    console.error('Error updating appointment services:', servicesError)
+    return { error: 'Erro ao atualizar serviços do agendamento.' }
+  }
+
+  revalidatePath('/appointments')
+  revalidatePath('/dashboard')
+  return { success: 'Agendamento atualizado com sucesso!' }
 }
 
 export async function updateAppointmentStatus(id: string, status: 'confirmed' | 'completed' | 'cancelled') {

@@ -91,7 +91,7 @@ export async function getCommissionReport(params: {
   // Fetch completed appointments with barber in the date range
   let query = supabase
     .from('appointments')
-    .select('id, total_amount, appointment_date, client_name, barber_id, services(name)')
+    .select('id, total_amount, appointment_date, client_name, barber_id, appointment_services(services(name))')
     .eq('barbershop_id', barbershop.id)
     .eq('status', 'completed')
     .eq('payment_status', 'paid')
@@ -156,7 +156,9 @@ export async function getCommissionReport(params: {
     item.totalRevenue += apt.total_amount
     item.commissionAmount += commission
 
-    const serviceName = (apt.services as { name: string } | null)?.name || 'Serviço'
+    const serviceName = (apt as Record<string, unknown>).appointment_services
+      ? ((apt as Record<string, unknown>).appointment_services as { services: { name: string } | null }[]).map(as => as.services?.name).filter(Boolean).join(', ') || 'Serviço'
+      : 'Serviço'
 
     item.appointments.push({
       id: apt.id,

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, X, User } from 'lucide-react'
+import { X, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
@@ -16,10 +16,10 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { formatPhone } from '@/lib/utils'
-import { createAppointment } from '@/app/appointments/actions'
+import { updateAppointment } from '@/app/appointments/actions'
 import { ClientSelector } from './client-selector'
 import { ServiceMultiSelect } from './service-multi-select'
-import type { ServiceOption, BarberOption } from '@/types/database.types'
+import type { AppointmentWithRelations, ServiceOption, BarberOption } from '@/types/database.types'
 
 interface Client {
   id: string
@@ -30,76 +30,62 @@ interface Client {
 
 const disablePastDates = (date: Date) => date < new Date(new Date().setHours(0, 0, 0, 0))
 
-function dateToTimeStr(date: Date): string {
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
-}
-
-interface CreateAppointmentDialogProps {
+interface EditAppointmentDialogProps {
+  appointment: AppointmentWithRelations
   services: ServiceOption[]
   clients: Client[]
   barbers: BarberOption[]
-  isOpen?: boolean
-  onOpenChange?: (open: boolean) => void
-  initialDate?: Date
-  initialBarberId?: string
+  isOpen: boolean
+  onOpenChange: (open: boolean) => void
 }
 
-export function CreateAppointmentDialog({ services, clients, barbers, isOpen: externalIsOpen, onOpenChange, initialDate, initialBarberId }: CreateAppointmentDialogProps) {
-  const [internalIsOpen, setInternalIsOpen] = useState(false)
-  
-  const isControlled = typeof externalIsOpen !== 'undefined'
-  const isOpen = isControlled ? externalIsOpen : internalIsOpen
-  const setIsOpen = (open: boolean) => {
-    if (isControlled) {
-      onOpenChange?.(open)
-    } else {
-      setInternalIsOpen(open)
-    }
-  }
-
+export function EditAppointmentDialog({ appointment, services, clients, barbers, isOpen, onOpenChange }: EditAppointmentDialogProps) {
   return (
-    <>
-      <Button onClick={() => setIsOpen(true)}>
-        <Plus className="mr-2 h-4 w-4" /> Novo Agendamento
-      </Button>
-
-      <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title="Novo Agendamento">
-        <AppointmentFormContent
+    <Modal isOpen={isOpen} onClose={() => onOpenChange(false)} title="Editar Agendamento">
+      {isOpen && (
+        <EditAppointmentFormContent
+          appointment={appointment}
           services={services}
           clients={clients}
           barbers={barbers}
-          initialDate={initialDate}
-          initialBarberId={initialBarberId}
-          onClose={() => setIsOpen(false)}
+          onClose={() => onOpenChange(false)}
         />
-      </Modal>
-    </>
+      )}
+    </Modal>
   )
 }
 
-/** Inner form component — mounts/unmounts with Modal, so useState resets every open */
-function AppointmentFormContent({ services, clients, barbers, initialDate, initialBarberId, onClose }: {
+function EditAppointmentFormContent({ appointment, services, clients, barbers, onClose }: {
+  appointment: AppointmentWithRelations
   services: ServiceOption[]
   clients: Client[]
   barbers: BarberOption[]
-  initialDate?: Date
-  initialBarberId?: string
   onClose: () => void
 }) {
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null)
-  const [isNewClientMode, setIsNewClientMode] = useState(false)
-  
-  // Form state
-  const [clientName, setClientName] = useState('')
-  const [clientPhone, setClientPhone] = useState('')
-  
-  // Select state — initialized directly from props (no useEffect needed)
-  const [serviceIds, setServiceIds] = useState<string[]>([])
-  const [barberId, setBarberId] = useState(initialBarberId ?? '')
+  // Pre-populate client state
+  const existingClient = appointment.client_id
+    ? clients.find(c => c.id === appointment.client_id) || null
+    : null
 
-  // Date and Time state — initialized directly from props
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => initialDate ?? new Date())
-  const [timeStr, setTimeStr] = useState(() => initialDate ? dateToTimeStr(initialDate) : '')
+  const [selectedClient, setSelectedClient] = useState<Client | null>(existingClient)
+  const [isNewClientMode, setIsNewClientMode] = useState(false)
+
+  const [clientName, setClientName] = useState(appointment.client_name)
+  const [clientPhone, setClientPhone] = useState(appointment.client_phone ? formatPhone(appointment.client_phone) : '')
+
+  // Pre-populate services from appointment_services
+  const [serviceIds, setServiceIds] = useState<string[]>(
+    appointment.appointment_services.map(as => as.service_id)
+  )
+  const [barberId, setBarberId] = useState(appointment.barber_id ?? '')
+
+  // Pre-populate date/time from appointment_date
+  const appointmentDate = new Date(appointment.appointment_date)
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(appointmentDate)
+  const [timeStr, setTimeStr] = useState(
+    `${String(appointmentDate.getHours()).padStart(2, '0')}:${String(appointmentDate.getMinutes()).padStart(2, '0')}`
+  )
+  const [notes, setNotes] = useState(appointment.notes || '')
 
   useEffect(() => {
     if (selectedClient) {
@@ -130,22 +116,17 @@ function AppointmentFormContent({ services, clients, barbers, initialDate, initi
     setClientPhone('')
   }
 
-  // Custom form handling to close modal on success
   const handleSubmit = async (formData: FormData) => {
-    // Combine date and time into a single ISO string
     if (selectedDate && timeStr) {
       const [hours, minutes] = timeStr.split(':')
       const dateTime = new Date(selectedDate)
       dateTime.setHours(Number(hours), Number(minutes), 0, 0)
       formData.set('appointment_date', dateTime.toISOString())
     }
-    
-    const result = await createAppointment(formData)
+
+    const result = await updateAppointment(formData)
     if (result?.success) {
       onClose()
-      handleClearClient()
-      setServiceIds([])
-      setBarberId('')
     } else if (result?.error) {
       alert(result.error)
     }
@@ -153,12 +134,16 @@ function AppointmentFormContent({ services, clients, barbers, initialDate, initi
 
   return (
     <form action={handleSubmit} className="space-y-4">
-      
+      <input type="hidden" name="id" value={appointment.id} />
+      <input type="hidden" name="client_id" value={selectedClient?.id || ''} />
+      <input type="hidden" name="is_new_client" value={isNewClientMode ? 'true' : 'false'} />
+      <input type="hidden" name="service_ids" value={JSON.stringify(serviceIds)} />
+
       {/* Client Selection Section */}
       <div className="space-y-4 border-b pb-4">
         {!selectedClient && !isNewClientMode ? (
-          <ClientSelector 
-            clients={clients} 
+          <ClientSelector
+            clients={clients}
             onSelect={handleClientSelect}
             onNewClient={handleNewClient}
           />
@@ -177,45 +162,49 @@ function AppointmentFormContent({ services, clients, barbers, initialDate, initi
                 </p>
               </div>
             </div>
-            <Button size="sm" variant="ghost" onClick={handleClearClient}>
+            <Button size="sm" variant="ghost" onClick={handleClearClient} type="button">
               <X className="h-4 w-4" />
             </Button>
           </div>
         )}
       </div>
 
-      <input type="hidden" name="client_id" value={selectedClient?.id || ''} />
-      <input type="hidden" name="is_new_client" value={isNewClientMode ? 'true' : 'false'} />
-      <input type="hidden" name="service_ids" value={JSON.stringify(serviceIds)} />
-
       {(selectedClient || isNewClientMode) && (
         <>
           <div className="space-y-2">
-            <Label htmlFor="client_name">Nome do Cliente</Label>
-            <Input 
-              id="client_name" 
-              name="client_name" 
-              required 
-              placeholder="Nome completo" 
+            <Label htmlFor="edit_client_name">Nome do Cliente</Label>
+            <Input
+              id="edit_client_name"
+              name="client_name"
+              required
+              placeholder="Nome completo"
               value={clientName}
               onChange={(e) => setClientName(e.target.value)}
               readOnly={!!selectedClient}
               className={selectedClient ? 'bg-muted' : ''}
             />
           </div>
-          
+
           <div className="space-y-2">
-            <Label htmlFor="client_phone">Telefone (Opcional)</Label>
-            <Input 
-              id="client_phone" 
-              name="client_phone" 
-              placeholder="(00) 00000-0000" 
+            <Label htmlFor="edit_client_phone">Telefone (Opcional)</Label>
+            <Input
+              id="edit_client_phone"
+              name="client_phone"
+              placeholder="(00) 00000-0000"
               value={clientPhone}
               onChange={(e) => setClientPhone(formatPhone(e.target.value))}
               readOnly={!!selectedClient}
               className={selectedClient ? 'bg-muted' : ''}
             />
           </div>
+        </>
+      )}
+
+      {/* If no client section visible, still send names as hidden */}
+      {!selectedClient && !isNewClientMode && (
+        <>
+          <input type="hidden" name="client_name" value={appointment.client_name} />
+          <input type="hidden" name="client_phone" value={appointment.client_phone} />
         </>
       )}
 
@@ -259,13 +248,19 @@ function AppointmentFormContent({ services, clients, barbers, initialDate, initi
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="notes">Observações (Opcional)</Label>
-        <Input id="notes" name="notes" placeholder="Ex: Cliente novo, corte específico..." />
+        <Label htmlFor="edit_notes">Observações (Opcional)</Label>
+        <Input
+          id="edit_notes"
+          name="notes"
+          placeholder="Ex: Cliente novo, corte específico..."
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+        />
       </div>
 
       <div className="pt-4 flex justify-end space-x-2">
         <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
-        <Button type="submit">Agendar</Button>
+        <Button type="submit">Salvar Alterações</Button>
       </div>
     </form>
   )
