@@ -7,6 +7,7 @@ import type { ActionState } from '@/types/database.types'
 
 const barbershopSchema = z.object({
   name: z.string().min(2, 'Nome da barbearia deve ter pelo menos 2 caracteres'),
+  owner_name: z.string().min(2, 'Nome do dono deve ter pelo menos 2 caracteres'),
   street: z.string().min(5, 'Endereço deve ser válido'),
   city: z.string().min(2, 'Cidade deve ser válida'),
   state: z.string().length(2, 'Estado deve ter 2 letras (UF)'),
@@ -18,6 +19,7 @@ const barbershopSchema = z.object({
 export async function createBarbershop(prevState: ActionState, formData: FormData) {
   const rawData = {
     name: formData.get('name') as string,
+    owner_name: formData.get('owner_name') as string,
     phone: formData.get('phone') as string,
     street: formData.get('street') as string,
     number: formData.get('number') as string,
@@ -118,6 +120,21 @@ export async function createBarbershop(prevState: ActionState, formData: FormDat
 
   if (categoriesError) {
     console.error('Error creating default categories:', categoriesError)
+  }
+
+  // Create the owner as the first senior barber
+  const { error: ownerBarberError } = await supabase
+    .from('barbers')
+    .insert({
+      barbershop_id: barbershop.id,
+      name: rawData.owner_name,
+      role: 'senior_barber',
+      commission_percentage: 0,
+      is_active: true,
+    })
+
+  if (ownerBarberError) {
+    console.error('Error creating owner barber:', ownerBarberError)
   }
 
   redirect('/dashboard')
