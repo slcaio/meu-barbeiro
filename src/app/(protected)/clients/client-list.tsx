@@ -2,17 +2,20 @@
 
 import { Button } from '@/components/ui/button'
 import { deleteClient } from '@/app/clients/actions'
-import { Trash2, Search } from 'lucide-react'
+import { Trash2, Search, Pencil } from 'lucide-react'
 import { useTransition, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Database } from '@/types/database.types'
-import { formatPhone } from '@/lib/utils'
+import { formatPhone, formatCPF } from '@/lib/utils'
+import { EditClientDialog } from './edit-client-dialog'
 
 type Client = Database['public']['Tables']['clients']['Row']
 
 export function ClientList({ clients }: { clients: Client[] }) {
   const [isPending, startTransition] = useTransition()
   const [searchTerm, setSearchTerm] = useState('')
+  const [editClient, setEditClient] = useState<Client | null>(null)
+  const [isEditOpen, setIsEditOpen] = useState(false)
 
   const handleDelete = (id: string) => {
     if (confirm('Tem certeza que deseja excluir este cliente?')) {
@@ -22,12 +25,18 @@ export function ClientList({ clients }: { clients: Client[] }) {
     }
   }
 
+  const handleEdit = (client: Client) => {
+    setEditClient(client)
+    setIsEditOpen(true)
+  }
+
   const filteredClients = clients.filter(client => {
     const searchLower = searchTerm.toLowerCase()
     return (
       client.name?.toLowerCase().includes(searchLower) ||
       client.email?.toLowerCase().includes(searchLower) ||
-      client.phone?.includes(searchLower)
+      client.phone?.includes(searchLower) ||
+      client.cpf?.replace(/\D/g, '').includes(searchTerm.replace(/\D/g, ''))
     )
   })
 
@@ -36,7 +45,7 @@ export function ClientList({ clients }: { clients: Client[] }) {
       <div className="relative">
         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Pesquisar por nome, email ou telefone..."
+          placeholder="Pesquisar por nome, email, telefone ou CPF..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-8"
@@ -50,13 +59,14 @@ export function ClientList({ clients }: { clients: Client[] }) {
               <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Nome</th>
               <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Telefone</th>
               <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Email</th>
+              <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">CPF</th>
               <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">Ações</th>
             </tr>
           </thead>
           <tbody>
             {filteredClients.length === 0 ? (
               <tr>
-                <td colSpan={4} className="p-4 text-center text-muted-foreground">
+                <td colSpan={5} className="p-4 text-center text-muted-foreground">
                   Nenhum cliente encontrado.
                 </td>
               </tr>
@@ -73,16 +83,28 @@ export function ClientList({ clients }: { clients: Client[] }) {
                   </td>
                   <td className="p-4 align-middle">{client.phone ? formatPhone(client.phone) : '-'}</td>
                   <td className="p-4 align-middle">{client.email || '-'}</td>
+                  <td className="p-4 align-middle">{client.cpf ? formatCPF(client.cpf) : '-'}</td>
                   <td className="p-4 align-middle text-right">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="text-muted-foreground hover:text-red-600 hover:bg-red-500/10 h-8 w-8"
-                      onClick={() => handleDelete(client.id)}
-                      disabled={isPending}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="text-muted-foreground hover:text-primary hover:bg-primary/10 h-8 w-8"
+                        onClick={() => handleEdit(client)}
+                        disabled={isPending}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="text-muted-foreground hover:text-red-600 hover:bg-red-500/10 h-8 w-8"
+                        onClick={() => handleDelete(client.id)}
+                        disabled={isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -90,6 +112,13 @@ export function ClientList({ clients }: { clients: Client[] }) {
           </tbody>
         </table>
       </div>
+
+      <EditClientDialog
+        client={editClient}
+        isOpen={isEditOpen}
+        onOpenChange={setIsEditOpen}
+      />
     </div>
   )
 }
+
