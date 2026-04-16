@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, X, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SubmitButton } from '@/components/ui/submit-button'
 import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -265,7 +266,7 @@ function AppointmentFormContent({ services, clients, barbers, initialDate, initi
 
       <div className="pt-4 flex justify-end space-x-2">
         <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
-        <Button type="submit">Agendar</Button>
+        <SubmitButton pendingText="Agendando...">Agendar</SubmitButton>
       </div>
     </form>
   )

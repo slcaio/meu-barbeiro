@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SubmitButton } from '@/components/ui/submit-button'
 import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -160,9 +161,9 @@ export function AddTransactionDialog({ categories: allCategories, isOpen: extern
 
           <div className="pt-4 flex justify-end space-x-2">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancelar</Button>
-            <Button type="submit" variant={type === 'income' ? 'default' : 'destructive'}>
+            <SubmitButton variant={type === 'income' ? 'default' : 'destructive'} pendingText="Registrando...">
               {type === 'income' ? 'Registrar Receita' : 'Registrar Despesa'}
-            </Button>
+            </SubmitButton>
           </div>
         </form>
       </Modal>

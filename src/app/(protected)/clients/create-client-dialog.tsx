@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { SubmitButton } from '@/components/ui/submit-button'
 import { Modal } from '@/components/ui/modal'
 import { Plus } from 'lucide-react'
 import { Input } from '@/components/ui/input'
@@ -67,7 +68,7 @@ export function CreateClientDialog() {
 
           <div className="pt-4 flex justify-end space-x-2">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancelar</Button>
-            <Button type="submit">Salvar</Button>
+            <SubmitButton pendingText="Salvando...">Salvar</SubmitButton>
           </div>
         </form>
       </Modal>
