@@ -15,6 +15,23 @@ vi.mock('./transaction-list', () => ({
   ),
 }))
 
+vi.mock('./statement-report-dialog', () => ({
+  StatementReportDialog: ({
+    transactions,
+    summary,
+  }: {
+    transactions: { id: string }[]
+    summary: { totalIncome: number; expenses: number; netProfit: number }
+  }) => (
+    <div
+      data-testid="statement-report-dialog"
+      data-transaction-count={transactions.length}
+      data-income={summary.totalIncome}
+      data-expenses={summary.expenses}
+    />
+  ),
+}))
+
 function createTransactions(count: number) {
   return Array.from({ length: count }, (_, i) => ({
     id: `tx-${i + 1}`,
@@ -142,5 +159,43 @@ describe('TransactionSection', () => {
     await user.type(screen.getByPlaceholderText('Buscar por descrição...'), 'DESCRIÇÃO ITEM 1')
 
     expect(screen.getAllByTestId('transaction-item').length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('renderiza os cards de resumo', async () => {
+    await renderComponent(5)
+    expect(screen.getByText('Receita Total')).toBeInTheDocument()
+    expect(screen.getByText('Despesas')).toBeInTheDocument()
+    expect(screen.getByText('Lucro Líquido')).toBeInTheDocument()
+  })
+
+  it('cards refletem os totais das transações sem busca', async () => {
+    const { TransactionSection } = await import('./transaction-section')
+    const transactions = [
+      { id: 'a', type: 'income' as const, amount: 200, description: 'Receita A', category: 'Outros', date: '2026-04-01', source: 'manual' as const, paymentMethodName: null },
+      { id: 'b', type: 'expense' as const, amount: 80, description: 'Despesa B', category: 'Outros', date: '2026-04-01', source: 'manual' as const, paymentMethodName: null },
+    ]
+    render(<TransactionSection transactions={transactions} />)
+
+    expect(screen.getByTestId('statement-report-dialog')).toHaveAttribute('data-income', '200')
+    expect(screen.getByTestId('statement-report-dialog')).toHaveAttribute('data-expenses', '80')
+    expect(screen.getByTestId('statement-report-dialog')).toHaveAttribute('data-transaction-count', '2')
+  })
+
+  it('cards e relatório refletem apenas as transações filtradas pela busca', async () => {
+    const user = userEvent.setup()
+    const { TransactionSection } = await import('./transaction-section')
+    const transactions = [
+      { id: 'a', type: 'income' as const, amount: 200, description: 'Corte simples', category: 'Outros', date: '2026-04-01', source: 'manual' as const, paymentMethodName: null },
+      { id: 'b', type: 'expense' as const, amount: 80, description: 'Produto X', category: 'Outros', date: '2026-04-01', source: 'manual' as const, paymentMethodName: null },
+      { id: 'c', type: 'income' as const, amount: 150, description: 'Corte degradê', category: 'Outros', date: '2026-04-01', source: 'manual' as const, paymentMethodName: null },
+    ]
+    render(<TransactionSection transactions={transactions} />)
+
+    await user.type(screen.getByPlaceholderText('Buscar por descrição...'), 'corte')
+
+    const dialog = screen.getByTestId('statement-report-dialog')
+    expect(dialog).toHaveAttribute('data-transaction-count', '2')
+    expect(dialog).toHaveAttribute('data-income', '350')
+    expect(dialog).toHaveAttribute('data-expenses', '0')
   })
 })

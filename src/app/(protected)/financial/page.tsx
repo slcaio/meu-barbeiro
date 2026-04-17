@@ -1,12 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { DollarSign, TrendingDown, TrendingUp } from 'lucide-react'
 import { AddTransactionDialog } from './add-transaction-dialog'
 import { TransactionSection } from './transaction-section'
-import { FinancialFilters } from './financial-filters'
 import { CommissionReportDialog } from './commission-report-dialog'
-import { StatementReportDialog } from './statement-report-dialog'
 import { CategoryChart } from './category-chart'
 import { TrendChart } from './trend-chart'
 
@@ -172,10 +168,7 @@ async function getFinancialData(searchParams: SearchParams) {
 
 export default async function FinancialPage(props: { searchParams: Promise<SearchParams> }) {
   const searchParams = await props.searchParams
-  const { summary, transactions, categories, incomeCategoryData, expenseCategoryData, trendData } = await getFinancialData(searchParams)
-
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+  const { transactions, categories, incomeCategoryData, expenseCategoryData, trendData } = await getFinancialData(searchParams)
 
   return (
     <div className="space-y-6">
@@ -188,57 +181,8 @@ export default async function FinancialPage(props: { searchParams: Promise<Searc
         </div>
         <div className="flex flex-wrap gap-2">
           <CommissionReportDialog />
-          <StatementReportDialog transactions={transactions} summary={summary} />
           <AddTransactionDialog categories={categories} />
         </div>
-      </div>
-
-      <FinancialFilters categories={categories} />
-
-      {/* Summary Cards */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
-        <Card className="relative overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10">
-              <TrendingUp className="h-5 w-5 text-emerald-500" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-              {formatCurrency(summary.totalIncome)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="relative overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Despesas</CardTitle>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10">
-              <TrendingDown className="h-5 w-5 text-red-500" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400">
-              {formatCurrency(summary.expenses)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="relative overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Lucro Líquido</CardTitle>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10">
-              <DollarSign className="h-5 w-5 text-blue-500" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className={`text-xl sm:text-2xl font-bold ${summary.netProfit >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}`}>
-              {formatCurrency(summary.netProfit)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Resultado do mês
-            </p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Charts */}
@@ -249,7 +193,7 @@ export default async function FinancialPage(props: { searchParams: Promise<Searc
       </div>
 
       {/* Transaction List with Search & Pagination */}
-      <TransactionSection transactions={transactions} />
+      <TransactionSection transactions={transactions} categories={categories} />
     </div>
   )
 }
