@@ -16,6 +16,7 @@ const productSchema = z.object({
   initial_stock: z.coerce.number().int().min(0).default(0),
   min_stock: z.coerce.number().int().min(0).default(0),
   unit: z.enum(['un', 'ml', 'g', 'kg', 'L']).default('un'),
+  commission_percentage: z.coerce.number().min(0).max(100).default(0),
 })
 
 const updateProductSchema = z.object({
@@ -26,6 +27,7 @@ const updateProductSchema = z.object({
   sale_price: z.coerce.number().min(0.01, 'Preço de venda deve ser positivo'),
   min_stock: z.coerce.number().int().min(0).default(0),
   unit: z.enum(['un', 'ml', 'g', 'kg', 'L']).default('un'),
+  commission_percentage: z.coerce.number().min(0).max(100).default(0),
 })
 
 const stockEntrySchema = z.object({
@@ -41,6 +43,7 @@ const stockSaleSchema = z.object({
   unit_price: z.coerce.number().min(0.01, 'Preço unitário deve ser positivo'),
   payment_method_id: z.string().uuid().optional().or(z.literal('')),
   installments: z.coerce.number().int().min(1).default(1),
+  barber_id: z.string().uuid().optional().or(z.literal('')),
   notes: z.string().optional().or(z.literal('')),
 })
 
@@ -113,6 +116,7 @@ export async function createProduct(formData: FormData) {
     initial_stock: formData.get('initial_stock') || '0',
     min_stock: formData.get('min_stock') || '0',
     unit: formData.get('unit') || 'un',
+    commission_percentage: formData.get('commission_percentage') || '0',
   }
 
   const validation = productSchema.safeParse(rawData)
@@ -129,6 +133,7 @@ export async function createProduct(formData: FormData) {
       current_stock: validation.data.initial_stock,
       min_stock: validation.data.min_stock,
       unit: validation.data.unit,
+      commission_percentage: validation.data.commission_percentage,
     })
     .select()
     .single()
@@ -174,6 +179,7 @@ export async function updateProduct(formData: FormData) {
     sale_price: formData.get('sale_price'),
     min_stock: formData.get('min_stock') || '0',
     unit: formData.get('unit') || 'un',
+    commission_percentage: formData.get('commission_percentage') || '0',
   }
 
   const validation = updateProductSchema.safeParse(rawData)
@@ -188,6 +194,7 @@ export async function updateProduct(formData: FormData) {
       sale_price: validation.data.sale_price,
       min_stock: validation.data.min_stock,
       unit: validation.data.unit,
+      commission_percentage: validation.data.commission_percentage,
     })
     .eq('id', validation.data.id)
     .eq('barbershop_id', barbershop.id)
@@ -316,6 +323,7 @@ export async function registerStockSale(formData: FormData) {
     unit_price: formData.get('unit_price'),
     payment_method_id: formData.get('payment_method_id') ?? '',
     installments: formData.get('installments') ?? '1',
+    barber_id: formData.get('barber_id') ?? '',
     notes: formData.get('notes') ?? '',
   }
 
@@ -324,7 +332,7 @@ export async function registerStockSale(formData: FormData) {
 
   const { data: product } = await supabase
     .from('products')
-    .select('id, name, current_stock')
+    .select('id, name, current_stock, commission_percentage')
     .eq('id', validation.data.product_id)
     .eq('barbershop_id', barbershop.id)
     .eq('is_active', true)
@@ -338,6 +346,7 @@ export async function registerStockSale(formData: FormData) {
   const totalAmount = validation.data.quantity * validation.data.unit_price
 
   // 1. Create stock movement
+  const barberId = validation.data.barber_id || null
   const { data: movement, error: mvError } = await supabase
     .from('stock_movements')
     .insert({
@@ -349,6 +358,7 @@ export async function registerStockSale(formData: FormData) {
       total_cost: totalAmount,
       source: 'sale',
       financial_status: 'none',
+      barber_id: barberId,
       notes: validation.data.notes || null,
     })
     .select()
@@ -441,6 +451,29 @@ export async function registerStockSale(formData: FormData) {
           category: 'Taxa de Pagamento',
           description: feeDescription,
           payment_method_id: paymentMethodId,
+        })
+      }
+    }
+  }
+
+  // 6. Handle barber commission on product sale
+  if (barberId && product.commission_percentage > 0) {
+    const { data: barber } = await supabase
+      .from('barbers')
+      .select('name')
+      .eq('id', barberId)
+      .single()
+
+    if (barber) {
+      const commissionAmount = totalAmount * (product.commission_percentage / 100)
+      if (commissionAmount > 0) {
+        await supabase.from('financial_records').insert({
+          barbershop_id: barbershop.id,
+          type: 'expense',
+          amount: commissionAmount,
+          category: 'Comissão',
+          description: `Comissão ${barber.name} - Produto ${product.name} ${product.commission_percentage}%`,
+          record_date: new Date().toISOString().split('T')[0],
         })
       }
     }

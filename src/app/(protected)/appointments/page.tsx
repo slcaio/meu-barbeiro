@@ -53,17 +53,26 @@ async function getData() {
     .eq('is_active', true)
     .order('name')
 
+  // Get active products for POS dialog
+  const { data: products } = await supabase
+    .from('products')
+    .select('id, name, sale_price, current_stock, commission_percentage')
+    .eq('barbershop_id', barbershop.id)
+    .eq('is_active', true)
+    .order('name')
+
   return { 
     appointments: appointments || [], 
     services: services || [], 
     clients: clients || [],
     barbers: barbers || [],
     paymentMethods: paymentMethods || [],
+    products: products || [],
   }
 }
 
 export default async function AppointmentsPage() {
-  const { appointments, services, clients, barbers, paymentMethods } = await getData()
+  const { appointments, services, clients, barbers, paymentMethods, products } = await getData()
 
   return (
     <div className="space-y-6 h-full">
@@ -82,6 +91,7 @@ export default async function AppointmentsPage() {
         clients={clients}
         barbers={barbers}
         paymentMethods={paymentMethods}
+        products={products}
       />
     </div>
   )

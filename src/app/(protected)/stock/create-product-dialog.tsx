@@ -118,6 +118,22 @@ export function CreateProductDialog() {
             </Select>
           </div>
 
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Comissão do barbeiro (%)</span>
+            <Input
+              name="commission_percentage"
+              type="number"
+              min={0}
+              max={100}
+              step={0.01}
+              defaultValue={0}
+              placeholder="0"
+            />
+            <p className="text-xs text-muted-foreground">
+              Percentual de comissão pago ao barbeiro na venda deste produto.
+            </p>
+          </div>
+
           <div className="pt-4 flex justify-end space-x-2">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
               Cancelar

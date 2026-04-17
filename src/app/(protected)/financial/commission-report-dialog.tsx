@@ -43,10 +43,10 @@ type CommissionItem = {
   appointments: {
     id: string
     date: string
-    clientName: string
-    serviceName: string
+    description: string
     amount: number
     commission: number
+    type: 'service' | 'product'
   }[]
 }
 
@@ -277,13 +277,22 @@ export function CommissionReportDialog() {
                             {item.appointments.map(apt => (
                               <div key={apt.id} className="flex items-center justify-between px-4 py-3 text-sm">
                                 <div>
-                                  <p className="font-medium">{apt.clientName}</p>
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-medium">{apt.description}</p>
+                                    {apt.type === 'product' && (
+                                      <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                                        Produto
+                                      </span>
+                                    )}
+                                  </div>
                                   <p className="text-xs text-muted-foreground">
-                                    {apt.serviceName} • {new Date(apt.date).toLocaleDateString('pt-BR')}
+                                    {new Date(apt.date).toLocaleDateString('pt-BR')}
                                   </p>
                                 </div>
                                 <div className="text-right">
-                                  <p className="text-muted-foreground">{formatBRL(apt.amount)}</p>
+                                  {apt.amount > 0 && (
+                                    <p className="text-muted-foreground">{formatBRL(apt.amount)}</p>
+                                  )}
                                   <p className="text-xs font-medium text-amber-600">{formatBRL(apt.commission)}</p>
                                 </div>
                               </div>

@@ -349,6 +349,55 @@ export interface Database {
           }
         ]
       }
+      appointment_products: {
+        Row: {
+          id: string
+          appointment_id: string
+          product_id: string
+          quantity: number
+          price_at_time: number
+          barber_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          appointment_id: string
+          product_id: string
+          quantity: number
+          price_at_time: number
+          barber_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          appointment_id?: string
+          product_id?: string
+          quantity?: number
+          price_at_time?: number
+          barber_id?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_products_appointment_id_fkey"
+            columns: ["appointment_id"]
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_products_product_id_fkey"
+            columns: ["product_id"]
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_products_barber_id_fkey"
+            columns: ["barber_id"]
+            referencedRelation: "barbers"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       payment_methods: {
         Row: {
           id: string
@@ -523,6 +572,7 @@ export interface Database {
           current_stock: number
           min_stock: number
           unit: string
+          commission_percentage: number
           is_active: boolean
           created_at: string
           updated_at: string
@@ -537,6 +587,7 @@ export interface Database {
           current_stock?: number
           min_stock?: number
           unit?: string
+          commission_percentage?: number
           is_active?: boolean
           created_at?: string
           updated_at?: string
@@ -551,6 +602,7 @@ export interface Database {
           current_stock?: number
           min_stock?: number
           unit?: string
+          commission_percentage?: number
           is_active?: boolean
           created_at?: string
           updated_at?: string
@@ -576,6 +628,7 @@ export interface Database {
           source: 'manual' | 'sale' | 'purchase' | 'adjustment'
           reference_id: string | null
           financial_status: 'none' | 'pending' | 'settled'
+          barber_id: string | null
           notes: string | null
           created_at: string
         }
@@ -590,6 +643,7 @@ export interface Database {
           source: 'manual' | 'sale' | 'purchase' | 'adjustment'
           reference_id?: string | null
           financial_status?: 'none' | 'pending' | 'settled'
+          barber_id?: string | null
           notes?: string | null
           created_at?: string
         }
@@ -604,6 +658,7 @@ export interface Database {
           source?: 'manual' | 'sale' | 'purchase' | 'adjustment'
           reference_id?: string | null
           financial_status?: 'none' | 'pending' | 'settled'
+          barber_id?: string | null
           notes?: string | null
           created_at?: string
         }
@@ -662,12 +717,14 @@ export type Barbershop = Database['public']['Tables']['barbershops']['Row']
 export type Product = Database['public']['Tables']['products']['Row']
 export type StockMovement = Database['public']['Tables']['stock_movements']['Row']
 export type AppointmentServiceRow = Database['public']['Tables']['appointment_services']['Row']
+export type AppointmentProductRow = Database['public']['Tables']['appointment_products']['Row']
 
 // Partial types matching common select queries
 export type ServiceOption = Pick<Service, 'id' | 'name' | 'price' | 'duration_minutes'>
 export type ClientOption = Pick<Client, 'id' | 'name' | 'phone' | 'email'>
 export type BarberOption = Pick<Barber, 'id' | 'name' | 'is_active'>
 export type PaymentMethodOption = Pick<PaymentMethod, 'id' | 'name' | 'fee_type' | 'fee_value'>
+export type ProductOption = Pick<Product, 'id' | 'name' | 'sale_price' | 'current_stock' | 'commission_percentage'>
 export type PaymentMethodInstallment = Database['public']['Tables']['payment_method_installments']['Row']
 
 // Payment method with installment tiers (used in POS dialog)
@@ -683,9 +740,20 @@ export type AppointmentServiceWithDetails = {
   services: Pick<Service, 'id' | 'name' | 'duration_minutes' | 'price'> | null
 }
 
+// Single appointment_product row with joined product details
+export type AppointmentProductWithDetails = {
+  product_id: string
+  quantity: number
+  price_at_time: number
+  barber_id: string | null
+  products: Pick<Product, 'id' | 'name'> | null
+  barbers: Pick<Barber, 'id' | 'name'> | null
+}
+
 // Appointment with joined relations (from select with joins)
 export type AppointmentWithRelations = AppointmentRow & {
   appointment_services: AppointmentServiceWithDetails[]
+  appointment_products?: AppointmentProductWithDetails[]
   barbers: Pick<Barber, 'id' | 'name'> | null
 }
 

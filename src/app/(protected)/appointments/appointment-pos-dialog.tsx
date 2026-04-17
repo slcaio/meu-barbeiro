@@ -6,9 +6,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { completeAppointmentWithTransaction } from '@/app/appointments/actions'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Plus, Trash2, Package } from 'lucide-react'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
-import type { AppointmentWithRelations, PaymentMethodWithInstallments } from '@/types/database.types'
+import type { AppointmentWithRelations, PaymentMethodWithInstallments, ProductOption, BarberOption } from '@/types/database.types'
+
+interface ProductRow {
+  product_id: string
+  quantity: number
+  price_at_time: number
+  barber_id: string
+}
 
 interface AppointmentPOSDialogProps {
   appointment: AppointmentWithRelations
@@ -16,6 +23,8 @@ interface AppointmentPOSDialogProps {
   onOpenChange: (open: boolean) => void
   action: 'complete' | 'cancel'
   paymentMethods: PaymentMethodWithInstallments[]
+  products?: ProductOption[]
+  barbers?: BarberOption[]
 }
 
 export function AppointmentPOSDialog({
@@ -23,18 +32,24 @@ export function AppointmentPOSDialog({
   isOpen,
   onOpenChange,
   action,
-  paymentMethods
+  paymentMethods,
+  products = [],
+  barbers = [],
 }: AppointmentPOSDialogProps) {
   const [amount, setAmount] = useState<string>('')
   const [description, setDescription] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<string>('')
   const [selectedInstallments, setSelectedInstallments] = useState<number>(1)
+  const [productRows, setProductRows] = useState<ProductRow[]>([])
+
+  const defaultBarberId = appointment?.barber_id || ''
 
   useEffect(() => {
     if (isOpen && appointment) {
       setSelectedPaymentMethodId('')
       setSelectedInstallments(1)
+      setProductRows([])
 
       const serviceNames = appointment.appointment_services
         .map(as => as.services?.name)
@@ -52,15 +67,32 @@ export function AppointmentPOSDialog({
     }
   }, [isOpen, appointment, action])
 
+  // Product row handlers
+  const addProductRow = () => {
+    setProductRows(prev => [...prev, { product_id: '', quantity: 1, price_at_time: 0, barber_id: defaultBarberId }])
+  }
+
+  const removeProductRow = (index: number) => {
+    setProductRows(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const updateProductRow = (index: number, field: keyof ProductRow, value: string | number) => {
+    setProductRows(prev => prev.map((row, i) => {
+      if (i !== index) return row
+      if (field === 'product_id') {
+        const product = products.find(p => p.id === value)
+        return { ...row, product_id: value as string, price_at_time: product?.sale_price ?? 0 }
+      }
+      return { ...row, [field]: value }
+    }))
+  }
+
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
-    // Allow user to clear input
     if (value === '') {
       setAmount('')
       return
     }
-    
-    // Only allow digits to be typed (and then we format)
     const numericValue = value.replace(/\D/g, '')
     const formatted = formatCurrency(numericValue)
     setAmount(formatted)
@@ -68,8 +100,13 @@ export function AppointmentPOSDialog({
 
   const handlePaymentMethodChange = (id: string) => {
     setSelectedPaymentMethodId(id)
-    setSelectedInstallments(1) // Reset installments when changing method
+    setSelectedInstallments(1)
   }
+
+  // Totals
+  const servicesAmount = parseCurrency(amount)
+  const productsTotal = productRows.reduce((sum, row) => sum + row.quantity * row.price_at_time, 0)
+  const grandTotal = servicesAmount + productsTotal
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -79,17 +116,23 @@ export function AppointmentPOSDialog({
       return
     }
 
+    // Validate product rows
+    const validProducts = productRows.filter(r => r.product_id && r.quantity > 0)
+    for (const row of validProducts) {
+      const product = products.find(p => p.id === row.product_id)
+      if (product && row.quantity > product.current_stock) {
+        alert(`Estoque insuficiente para "${product.name}". Disponível: ${product.current_stock}`)
+        return
+      }
+    }
+
     setIsSubmitting(true)
 
     try {
       const formData = new FormData()
       formData.append('appointment_id', appointment.id)
       formData.append('action', action)
-      
-      // Parse currency back to number string (e.g. 30.00)
-      const rawAmount = parseCurrency(amount)
-      formData.append('amount', rawAmount.toString())
-      
+      formData.append('amount', servicesAmount.toString())
       formData.append('description', description)
 
       if (selectedPaymentMethodId) {
@@ -97,6 +140,10 @@ export function AppointmentPOSDialog({
       }
 
       formData.append('installments', selectedInstallments.toString())
+
+      if (validProducts.length > 0) {
+        formData.append('products_json', JSON.stringify(validProducts))
+      }
       
       const result = await completeAppointmentWithTransaction(formData)
 
@@ -113,27 +160,23 @@ export function AppointmentPOSDialog({
     }
   }
 
-  // Determine selected method and its installment tiers
+  // Fee calculation on grand total (services + products)
   const selectedMethod = paymentMethods.find(pm => pm.id === selectedPaymentMethodId)
-  const rawAmount = parseCurrency(amount)
 
-  // Calculate fee based on installments
   let feeAmount = 0
   let feeLabel = ''
-  if (selectedMethod && rawAmount > 0) {
+  if (selectedMethod && grandTotal > 0) {
     if (selectedInstallments > 1 && selectedMethod.supports_installments) {
-      // Use installment-specific fee
       const tier = selectedMethod.payment_method_installments.find(
         t => t.installment_number === selectedInstallments
       )
       if (tier) {
-        feeAmount = rawAmount * (tier.fee_percentage / 100)
+        feeAmount = grandTotal * (tier.fee_percentage / 100)
         feeLabel = `${selectedMethod.name} ${selectedInstallments}x - ${tier.fee_percentage}%`
       }
     } else {
-      // Use base fee (1x / à vista)
       if (selectedMethod.fee_type === 'percentage') {
-        feeAmount = rawAmount * (selectedMethod.fee_value / 100)
+        feeAmount = grandTotal * (selectedMethod.fee_value / 100)
       } else {
         feeAmount = selectedMethod.fee_value
       }
@@ -143,29 +186,28 @@ export function AppointmentPOSDialog({
     }
   }
   const feeFormatted = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(feeAmount)
+  const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
 
-  // Build installment options for selected method
+  // Build installment options
   const installmentOptions: { value: number; label: string; fee: number }[] = []
-  if (selectedMethod?.supports_installments && rawAmount > 0) {
-    // 1x option (base fee)
+  if (selectedMethod?.supports_installments && grandTotal > 0) {
     const baseFee = selectedMethod.fee_type === 'percentage'
-      ? rawAmount * (selectedMethod.fee_value / 100)
+      ? grandTotal * (selectedMethod.fee_value / 100)
       : selectedMethod.fee_value
     installmentOptions.push({
       value: 1,
-      label: `1x de ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(rawAmount)}${baseFee > 0 ? ` (taxa ${selectedMethod.fee_value}%)` : ' (sem taxa)'}`,
+      label: `1x de ${fmt(grandTotal)}${baseFee > 0 ? ` (taxa ${selectedMethod.fee_value}%)` : ' (sem taxa)'}`,
       fee: baseFee,
     })
-    // Nx options from installment tiers
     const sortedTiers = [...selectedMethod.payment_method_installments].sort(
       (a, b) => a.installment_number - b.installment_number
     )
     for (const tier of sortedTiers) {
-      const installmentValue = rawAmount / tier.installment_number
+      const installmentValue = grandTotal / tier.installment_number
       installmentOptions.push({
         value: tier.installment_number,
-        label: `${tier.installment_number}x de ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(installmentValue)} (taxa ${tier.fee_percentage}%)`,
-        fee: rawAmount * (tier.fee_percentage / 100),
+        label: `${tier.installment_number}x de ${fmt(installmentValue)} (taxa ${tier.fee_percentage}%)`,
+        fee: grandTotal * (tier.fee_percentage / 100),
       })
     }
   }
@@ -174,9 +216,11 @@ export function AppointmentPOSDialog({
   const buttonText = action === 'complete' ? 'Concluir e Receber' : 'Confirmar Cancelamento'
   const buttonVariant = action === 'complete' ? 'default' : 'destructive'
 
+  const selectClass = 'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+
   return (
     <Modal isOpen={isOpen} onClose={() => onOpenChange(false)} title={title}>
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto">
         <div className="bg-muted p-3 rounded-md mb-4 text-sm text-foreground/80">
             <p><strong>Cliente:</strong> {appointment?.client_name}</p>
             <p><strong>Serviços:</strong> {appointment?.appointment_services?.map(as => as.services?.name).filter(Boolean).join(', ')}</p>
@@ -188,7 +232,7 @@ export function AppointmentPOSDialog({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="amount">Valor da Transação</Label>
+          <Label htmlFor="amount">Valor dos Serviços</Label>
           <Input 
             id="amount" 
             value={amount}
@@ -200,10 +244,124 @@ export function AppointmentPOSDialog({
           />
           <p className="text-xs text-muted-foreground">
             {action === 'complete' 
-              ? 'Você pode alterar o valor final cobrado.' 
+              ? 'Você pode alterar o valor final dos serviços.' 
               : 'Se houver taxa de cancelamento, informe o valor acima. Caso contrário, mantenha 0.'}
           </p>
         </div>
+
+        {/* Products section — only for complete action */}
+        {action === 'complete' && products.length > 0 && (
+          <div className="space-y-3 border border-border rounded-lg p-3">
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                Produtos vendidos
+              </Label>
+              <Button type="button" variant="outline" size="sm" onClick={addProductRow}>
+                <Plus className="h-4 w-4 mr-1" />
+                Adicionar
+              </Button>
+            </div>
+
+            {productRows.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-2">
+                Nenhum produto adicionado. Clique em &quot;Adicionar&quot; para vender junto.
+              </p>
+            )}
+
+            {productRows.map((row, index) => {
+              const selectedProduct = products.find(p => p.id === row.product_id)
+              return (
+                <div key={index} className="space-y-2 bg-muted/50 p-3 rounded-md relative">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-1 right-1 h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => removeProductRow(index)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+
+                  <div>
+                    <Label className="text-xs">Produto</Label>
+                    <select
+                      value={row.product_id}
+                      onChange={(e) => updateProductRow(index, 'product_id', e.target.value)}
+                      className={selectClass}
+                      required
+                    >
+                      <option value="">Selecione...</option>
+                      {products.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} — {fmt(p.sale_price)} (estoque: {p.current_stock})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">Qtd</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={selectedProduct?.current_stock ?? 999}
+                        value={row.quantity}
+                        onChange={(e) => updateProductRow(index, 'quantity', Number(e.target.value))}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Preço unitário</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        value={row.price_at_time}
+                        onChange={(e) => updateProductRow(index, 'price_at_time', Number(e.target.value))}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {barbers.length > 0 && (
+                    <div>
+                      <Label className="text-xs">Barbeiro (comissão)</Label>
+                      <select
+                        value={row.barber_id}
+                        onChange={(e) => updateProductRow(index, 'barber_id', e.target.value)}
+                        className={selectClass}
+                      >
+                        <option value="">Nenhum</option>
+                        {barbers.map(b => (
+                          <option key={b.id} value={b.id}>{b.name}</option>
+                        ))}
+                      </select>
+                      {selectedProduct && selectedProduct.commission_percentage > 0 && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Comissão: {selectedProduct.commission_percentage}%
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {selectedProduct && row.quantity > 0 && (
+                    <p className="text-xs font-medium text-right">
+                      Subtotal: {fmt(row.quantity * row.price_at_time)}
+                    </p>
+                  )}
+                </div>
+              )
+            })}
+
+            {productsTotal > 0 && (
+              <p className="text-sm font-semibold text-right">
+                Total Produtos: {fmt(productsTotal)}
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="description">Descrição da Transação</Label>
@@ -223,7 +381,7 @@ export function AppointmentPOSDialog({
               value={selectedPaymentMethodId}
               onChange={(e) => handlePaymentMethodChange(e.target.value)}
               required
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className={selectClass}
             >
               <option value="">Selecione...</option>
               {paymentMethods.map((pm) => (
@@ -247,7 +405,7 @@ export function AppointmentPOSDialog({
               id="installments"
               value={selectedInstallments}
               onChange={(e) => setSelectedInstallments(Number(e.target.value))}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className={selectClass}
             >
               {installmentOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -261,6 +419,32 @@ export function AppointmentPOSDialog({
         {action === 'complete' && selectedMethod && feeAmount > 0 && (
           <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-md text-sm text-amber-600 dark:text-amber-400">
             <p><strong>Taxa ({feeLabel}):</strong> {feeFormatted}</p>
+          </div>
+        )}
+
+        {/* Grand total summary */}
+        {action === 'complete' && (productsTotal > 0 || feeAmount > 0) && (
+          <div className="bg-primary/5 border border-primary/20 p-3 rounded-md text-sm space-y-1">
+            <div className="flex justify-between">
+              <span>Serviços</span>
+              <span>{fmt(servicesAmount)}</span>
+            </div>
+            {productsTotal > 0 && (
+              <div className="flex justify-between">
+                <span>Produtos</span>
+                <span>{fmt(productsTotal)}</span>
+              </div>
+            )}
+            {feeAmount > 0 && (
+              <div className="flex justify-between text-amber-600 dark:text-amber-400">
+                <span>Taxa</span>
+                <span>-{feeFormatted}</span>
+              </div>
+            )}
+            <div className="flex justify-between font-bold border-t pt-1 mt-1">
+              <span>Total</span>
+              <span>{fmt(grandTotal)}</span>
+            </div>
           </div>
         )}
 

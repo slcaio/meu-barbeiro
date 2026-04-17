@@ -123,6 +123,22 @@ export function EditProductDialog({ product }: EditProductDialogProps) {
             </div>
           </div>
 
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Comissão do barbeiro (%)</span>
+            <Input
+              name="commission_percentage"
+              type="number"
+              min={0}
+              max={100}
+              step={0.01}
+              defaultValue={product.commission_percentage}
+              placeholder="0"
+            />
+            <p className="text-xs text-muted-foreground">
+              Percentual de comissão pago ao barbeiro na venda deste produto.
+            </p>
+          </div>
+
           <p className="text-xs text-muted-foreground">
             Estoque atual: <strong>{product.current_stock} {product.unit}</strong> — controlado pelas movimentações.
           </p>

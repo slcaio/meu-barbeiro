@@ -15,7 +15,7 @@ import { schedulerConfig, CALENDAR_START_HOUR, CALENDAR_END_HOUR } from './sched
 import { useTheme } from 'next-themes'
 import type { BryntumScheduler } from '@bryntum/scheduler-react'
 import type { EventModel, ResourceModel } from '@bryntum/scheduler'
-import type { AppointmentWithRelations, ServiceOption, ClientOption, BarberOption, PaymentMethodWithInstallments } from '@/types/database.types'
+import type { AppointmentWithRelations, ServiceOption, ClientOption, BarberOption, PaymentMethodWithInstallments, ProductOption } from '@/types/database.types'
 
 // Bryntum CSS — structural + dark theme base (provides all component rendering)
 import '@bryntum/scheduler/scheduler.css'
@@ -58,9 +58,10 @@ interface AppointmentsCalendarViewProps {
   clients: ClientOption[]
   barbers: BarberOption[]
   paymentMethods: PaymentMethodWithInstallments[]
+  products: ProductOption[]
 }
 
-export function AppointmentsCalendarView({ appointments, services, clients, barbers, paymentMethods }: AppointmentsCalendarViewProps) {
+export function AppointmentsCalendarView({ appointments, services, clients, barbers, paymentMethods, products }: AppointmentsCalendarViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('day')
   const [date, setDate] = useState(new Date())
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -464,6 +465,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
         services={services}
         clients={clients}
         barbers={barbers}
+        products={products}
       />
     </div>
   )

@@ -9,7 +9,7 @@ import { Check, X, User, Phone, Scissors, Calendar, FileText, Info, Pencil } fro
 import { AppointmentPOSDialog } from './appointment-pos-dialog'
 import { EditAppointmentDialog } from './edit-appointment-dialog'
 import { formatPhone } from '@/lib/utils'
-import type { AppointmentWithRelations, PaymentMethodWithInstallments, ServiceOption, BarberOption } from '@/types/database.types'
+import type { AppointmentWithRelations, PaymentMethodWithInstallments, ServiceOption, BarberOption, ProductOption } from '@/types/database.types'
 
 interface Client {
   id: string
@@ -26,6 +26,7 @@ interface AppointmentDetailsDialogProps {
   services: ServiceOption[]
   clients: Client[]
   barbers: BarberOption[]
+  products: ProductOption[]
 }
 
 export function AppointmentDetailsDialog({
@@ -36,6 +37,7 @@ export function AppointmentDetailsDialog({
   services,
   clients,
   barbers,
+  products,
 }: AppointmentDetailsDialogProps) {
   const [posOpen, setPosOpen] = useState(false)
   const [posAction, setPosAction] = useState<'complete' | 'cancel'>('complete')
@@ -186,6 +188,8 @@ export function AppointmentDetailsDialog({
         onOpenChange={setPosOpen}
         action={posAction}
         paymentMethods={paymentMethods}
+        products={products}
+        barbers={barbers}
       />
 
       <EditAppointmentDialog
