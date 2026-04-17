@@ -8,6 +8,11 @@ const clientSchema = z.object({
   name: z.string().min(2, 'Nome é obrigatório'),
   phone: z.string().optional(),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
+  cpf: z.string().optional().or(z.literal('')),
+})
+
+const updateClientSchema = clientSchema.extend({
+  id: z.string().uuid(),
 })
 
 export async function getClients() {
@@ -49,6 +54,7 @@ export async function createNewClient(formData: FormData) {
     name: formData.get('name'),
     phone: formData.get('phone'),
     email: formData.get('email'),
+    cpf: formData.get('cpf'),
   }
 
   const validation = clientSchema.safeParse(rawData)
@@ -79,6 +85,7 @@ export async function createNewClient(formData: FormData) {
       name: validation.data.name,
       phone: validation.data.phone || null,
       email: validation.data.email || null,
+      cpf: validation.data.cpf || null,
     })
 
   if (error) {
@@ -89,6 +96,54 @@ export async function createNewClient(formData: FormData) {
   revalidatePath('/clients')
   revalidatePath('/appointments')
   return { success: 'Cliente criado com sucesso!' }
+}
+
+export async function updateClient(formData: FormData) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Usuário não autenticado.' }
+
+  const rawData = {
+    id: formData.get('id'),
+    name: formData.get('name'),
+    phone: formData.get('phone'),
+    email: formData.get('email'),
+    cpf: formData.get('cpf'),
+  }
+
+  const validation = updateClientSchema.safeParse(rawData)
+  if (!validation.success) {
+    return { error: 'Dados inválidos. Verifique os campos.' }
+  }
+
+  const { data: barbershop } = await supabase
+    .from('barbershops')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (!barbershop) return { error: 'Barbearia não encontrada.' }
+
+  const { error } = await supabase
+    .from('clients')
+    .update({
+      name: validation.data.name,
+      phone: validation.data.phone || null,
+      email: validation.data.email || null,
+      cpf: validation.data.cpf || null,
+    })
+    .eq('id', validation.data.id)
+    .eq('barbershop_id', barbershop.id)
+
+  if (error) {
+    console.error('Error updating client:', error)
+    return { error: 'Erro ao atualizar cliente.' }
+  }
+
+  revalidatePath('/clients')
+  revalidatePath('/appointments')
+  return { success: 'Cliente atualizado com sucesso!' }
 }
 
 export async function deleteClient(id: string) {

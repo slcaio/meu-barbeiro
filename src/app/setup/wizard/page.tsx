@@ -93,7 +93,7 @@ export default function SetupWizardPage() {
   }, [router, supabase])
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8">
       <Card className="w-full max-w-lg">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">Configurar Barbearia</CardTitle>
@@ -106,6 +106,11 @@ export default function SetupWizardPage() {
             <div className="space-y-2">
               <Label htmlFor="name">Nome da Barbearia</Label>
               <Input id="name" name="name" placeholder="Ex: Barbearia do Silva" required />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="owner_name">Seu Nome</Label>
+              <Input id="owner_name" name="owner_name" placeholder="Ex: João Silva" required />
             </div>
 
             <div className="space-y-2">

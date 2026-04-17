@@ -16,10 +16,10 @@ async function getData() {
 
   if (!barbershop) redirect('/setup/wizard')
 
-  // Get appointments with barber join
+  // Get appointments with service and barber joins
   const { data: appointments } = await supabase
     .from('appointments')
-    .select('*, services(name, duration_minutes, price), barbers(id, name)')
+    .select('*, appointment_services(service_id, price_at_time, services(id, name, duration_minutes, price)), barbers(id, name)')
     .eq('barbershop_id', barbershop.id)
     .order('appointment_date', { ascending: true })
 

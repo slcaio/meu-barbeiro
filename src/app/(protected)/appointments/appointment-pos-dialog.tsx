@@ -35,14 +35,19 @@ export function AppointmentPOSDialog({
     if (isOpen && appointment) {
       setSelectedPaymentMethodId('')
       setSelectedInstallments(1)
+
+      const serviceNames = appointment.appointment_services
+        .map(as => as.services?.name)
+        .filter(Boolean)
+        .join(', ')
+      const totalPrice = appointment.appointment_services.reduce((sum, as) => sum + as.price_at_time, 0)
+
       if (action === 'complete') {
-        // Convert number to formatted string
-        const price = appointment.services?.price || 0
-        setAmount(formatCurrency(price.toFixed(2)))
-        setDescription(`Serviço: ${appointment.services?.name} - Cliente: ${appointment.client_name}`)
+        setAmount(formatCurrency(totalPrice.toFixed(2)))
+        setDescription(`Serviços: ${serviceNames} - Cliente: ${appointment.client_name}`)
       } else {
         setAmount('R$ 0,00')
-        setDescription(`Taxa de cancelamento - Serviço: ${appointment.services?.name} - Cliente: ${appointment.client_name}`)
+        setDescription(`Taxa de cancelamento - Serviços: ${serviceNames} - Cliente: ${appointment.client_name}`)
       }
     }
   }, [isOpen, appointment, action])
@@ -174,9 +179,11 @@ export function AppointmentPOSDialog({
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="bg-muted p-3 rounded-md mb-4 text-sm text-foreground/80">
             <p><strong>Cliente:</strong> {appointment?.client_name}</p>
-            <p><strong>Serviço:</strong> {appointment?.services?.name}</p>
+            <p><strong>Serviços:</strong> {appointment?.appointment_services?.map(as => as.services?.name).filter(Boolean).join(', ')}</p>
             {action === 'complete' && (
-               <p><strong>Preço Padrão:</strong> {appointment?.services?.price ? formatCurrency(appointment.services.price.toFixed(2)) : 'R$ 0,00'}</p>
+               <p><strong>Preço Padrão:</strong> {formatCurrency(
+                 (appointment?.appointment_services?.reduce((sum, as) => sum + as.price_at_time, 0) ?? 0).toFixed(2)
+               )}</p>
             )}
         </div>
 

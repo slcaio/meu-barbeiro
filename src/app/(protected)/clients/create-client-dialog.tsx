@@ -2,21 +2,25 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { SubmitButton } from '@/components/ui/submit-button'
 import { Modal } from '@/components/ui/modal'
 import { Plus } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createNewClient } from '@/app/clients/actions'
-import { formatPhone } from '@/lib/utils'
+import { formatPhone, formatCPF } from '@/lib/utils'
 
 export function CreateClientDialog() {
   const [isOpen, setIsOpen] = useState(false)
   const [phone, setPhone] = useState('')
+  const [cpf, setCpf] = useState('')
 
   const handleSubmit = async (formData: FormData) => {
     const result = await createNewClient(formData)
     if (result.success) {
       setIsOpen(false)
+      setPhone('')
+      setCpf('')
     } else {
       alert(JSON.stringify(result.error))
     }
@@ -51,12 +55,24 @@ export function CreateClientDialog() {
             <Input id="email" name="email" type="email" placeholder="cliente@email.com" />
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="cpf">CPF</Label>
+            <Input
+              id="cpf"
+              name="cpf"
+              placeholder="000.000.000-00"
+              value={cpf}
+              onChange={(e) => setCpf(formatCPF(e.target.value))}
+            />
+          </div>
+
           <div className="pt-4 flex justify-end space-x-2">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancelar</Button>
-            <Button type="submit">Salvar</Button>
+            <SubmitButton pendingText="Salvando...">Salvar</SubmitButton>
           </div>
         </form>
       </Modal>
     </>
   )
 }
+

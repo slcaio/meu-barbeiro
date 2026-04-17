@@ -14,8 +14,10 @@ import {
   X,
   Package,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SubmitButton } from '@/components/ui/submit-button'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { signout } from '@/app/auth/actions'
 import { cn } from '@/lib/utils'
@@ -36,6 +38,18 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [navigatingTo, setNavigatingTo] = useState<string | null>(null)
+
+  useEffect(() => {
+    setNavigatingTo(null)
+  }, [pathname])
+
+  const handleNavClick = useCallback((href: string) => {
+    if (!pathname.startsWith(href)) {
+      setNavigatingTo(href)
+    }
+    setSidebarOpen(false)
+  }, [pathname])
 
   return (
     <div className="min-h-screen bg-background">
@@ -73,11 +87,12 @@ export default function DashboardLayout({
         <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
           {navigation.map((item) => {
             const isActive = pathname.startsWith(item.href)
+            const isNavigating = navigatingTo === item.href
             return (
               <Link
                 key={item.name}
                 href={item.href}
-                onClick={() => setSidebarOpen(false)}
+                onClick={() => handleNavClick(item.href)}
                 className={cn(
                   "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                   isActive
@@ -85,14 +100,18 @@ export default function DashboardLayout({
                     : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                 )}
               >
-                <item.icon
-                  className={cn(
-                    "h-5 w-5 flex-shrink-0 transition-colors",
-                    isActive ? "text-sidebar-primary" : "text-sidebar-foreground/40 group-hover:text-sidebar-foreground/70"
-                  )}
-                />
+                {isNavigating ? (
+                  <Loader2 className="h-5 w-5 flex-shrink-0 animate-spin text-sidebar-primary" />
+                ) : (
+                  <item.icon
+                    className={cn(
+                      "h-5 w-5 flex-shrink-0 transition-colors",
+                      isActive ? "text-sidebar-primary" : "text-sidebar-foreground/40 group-hover:text-sidebar-foreground/70"
+                    )}
+                  />
+                )}
                 {item.name}
-                {isActive && (
+                {isActive && !isNavigating && (
                   <span className="ml-auto h-1.5 w-1.5 rounded-full bg-sidebar-primary" />
                 )}
               </Link>
@@ -104,13 +123,14 @@ export default function DashboardLayout({
         <div className="border-t border-sidebar-border p-3">
           <div className="flex items-center gap-2">
             <form action={signout} className="flex-1">
-              <Button 
+              <SubmitButton 
                 variant="ghost" 
                 className="w-full justify-start gap-3 text-sidebar-foreground/60 hover:bg-destructive/10 hover:text-destructive"
+                pendingText="Saindo..."
               >
                 <LogOut className="h-5 w-5" />
                 Sair
-              </Button>
+              </SubmitButton>
             </form>
             <ThemeToggle />
           </div>
@@ -135,7 +155,15 @@ export default function DashboardLayout({
           </div>
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 md:p-8">
+        <main className="flex-1 p-4 sm:p-6 md:p-8 relative">
+          {navigatingTo && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-[1px]">
+              <div className="flex flex-col items-center gap-3">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span className="text-sm text-muted-foreground">Carregando...</span>
+              </div>
+            </div>
+          )}
           {children}
         </main>
       </div>

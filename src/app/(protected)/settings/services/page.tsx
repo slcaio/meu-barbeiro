@@ -1,12 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Trash2 } from 'lucide-react'
 import { createService, deleteService } from '@/app/settings/actions'
-import { revalidatePath } from 'next/cache'
+import { SubmitButton } from '@/components/ui/submit-button'
 
 async function getServices() {
   const supabase = await createClient()
@@ -72,7 +71,7 @@ export default async function ServicesPage() {
                   <Input id="duration_minutes" name="duration_minutes" type="number" min="5" step="5" placeholder="30" required />
                 </div>
               </div>
-              <Button type="submit" className="w-full">Adicionar Serviço</Button>
+              <SubmitButton className="w-full" pendingText="Adicionando...">Adicionar Serviço</SubmitButton>
             </form>
           </CardContent>
         </Card>
@@ -100,9 +99,9 @@ export default async function ServicesPage() {
                       'use server'
                       await deleteService(service.id)
                     }}>
-                      <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-500/10">
+                      <SubmitButton variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-500/10">
                         <Trash2 className="h-4 w-4" />
-                      </Button>
+                      </SubmitButton>
                     </form>
                   </div>
                 ))}

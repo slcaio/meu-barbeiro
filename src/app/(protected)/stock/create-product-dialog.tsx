@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SubmitButton } from '@/components/ui/submit-button'
 import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
 import {
@@ -121,7 +122,7 @@ export function CreateProductDialog() {
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit">Cadastrar</Button>
+            <SubmitButton pendingText="Cadastrando...">Cadastrar</SubmitButton>
           </div>
         </form>
       </Modal>

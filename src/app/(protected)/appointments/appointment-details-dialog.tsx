@@ -5,16 +5,27 @@ import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Check, X, User, Phone, Scissors, Calendar, FileText, Info } from 'lucide-react'
+import { Check, X, User, Phone, Scissors, Calendar, FileText, Info, Pencil } from 'lucide-react'
 import { AppointmentPOSDialog } from './appointment-pos-dialog'
+import { EditAppointmentDialog } from './edit-appointment-dialog'
 import { formatPhone } from '@/lib/utils'
-import type { AppointmentWithRelations, PaymentMethodWithInstallments } from '@/types/database.types'
+import type { AppointmentWithRelations, PaymentMethodWithInstallments, ServiceOption, BarberOption } from '@/types/database.types'
+
+interface Client {
+  id: string
+  name: string
+  phone: string | null
+  email: string | null
+}
 
 interface AppointmentDetailsDialogProps {
   appointment: AppointmentWithRelations
   isOpen: boolean
   onOpenChange: (open: boolean) => void
   paymentMethods: PaymentMethodWithInstallments[]
+  services: ServiceOption[]
+  clients: Client[]
+  barbers: BarberOption[]
 }
 
 export function AppointmentDetailsDialog({
@@ -22,9 +33,13 @@ export function AppointmentDetailsDialog({
   isOpen,
   onOpenChange,
   paymentMethods,
+  services,
+  clients,
+  barbers,
 }: AppointmentDetailsDialogProps) {
   const [posOpen, setPosOpen] = useState(false)
   const [posAction, setPosAction] = useState<'complete' | 'cancel'>('complete')
+  const [editOpen, setEditOpen] = useState(false)
 
   if (!appointment) return null
 
@@ -32,6 +47,11 @@ export function AppointmentDetailsDialog({
     setPosAction(status === 'completed' ? 'complete' : 'cancel')
     setPosOpen(true)
     onOpenChange(false)
+  }
+
+  const handleEdit = () => {
+    onOpenChange(false)
+    setEditOpen(true)
   }
 
   const statusLabels: Record<string, string> = {
@@ -76,10 +96,21 @@ export function AppointmentDetailsDialog({
                    <Scissors className="h-5 w-5" />
                 </div>
                 <div>
-                   <span className="block text-xs font-medium text-muted-foreground uppercase tracking-wide">Serviço</span>
-                   <span className="text-foreground font-medium">{appointment.services?.name}</span>
+                   <span className="block text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                     {appointment.appointment_services.length > 1 ? 'Serviços' : 'Serviço'}
+                   </span>
+                   <div className="space-y-1">
+                     {appointment.appointment_services.map((as) => (
+                       <div key={as.service_id} className="text-foreground font-medium">
+                         {as.services?.name}
+                         <span className="text-sm text-muted-foreground ml-1">
+                           ({new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(as.price_at_time)})
+                         </span>
+                       </div>
+                     ))}
+                   </div>
                    {appointment.barbers?.name && (
-                     <span className="text-sm text-muted-foreground ml-1">• {appointment.barbers.name}</span>
+                     <span className="text-sm text-muted-foreground mt-1 block">Barbeiro: {appointment.barbers.name}</span>
                    )}
                 </div>
              </div>
@@ -124,7 +155,14 @@ export function AppointmentDetailsDialog({
           <div className="pt-4 flex justify-end space-x-3 border-t">
             <Button
               variant="outline"
-              className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-500/10 border-red-200 dark:border-red-500/20"
+              onClick={handleEdit}
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              Editar
+            </Button>
+            <Button
+              variant="outline"
+              className="text-red-600 hover:text-red-700 hover:bg-red-500/10 border-red-200 dark:border-red-500/20"
               onClick={() => handleStatusChange('cancelled')}
               disabled={appointment.status === 'cancelled'}
             >
@@ -132,7 +170,6 @@ export function AppointmentDetailsDialog({
               Cancelar
             </Button>
             <Button
-              className="flex-1"
               onClick={() => handleStatusChange('completed')}
               disabled={appointment.status === 'completed'}
             >
@@ -149,6 +186,15 @@ export function AppointmentDetailsDialog({
         onOpenChange={setPosOpen}
         action={posAction}
         paymentMethods={paymentMethods}
+      />
+
+      <EditAppointmentDialog
+        appointment={appointment}
+        services={services}
+        clients={clients}
+        barbers={barbers}
+        isOpen={editOpen}
+        onOpenChange={setEditOpen}
       />
     </>
   )

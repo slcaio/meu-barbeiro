@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
+import { SubmitButton } from '@/components/ui/submit-button'
 import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -136,7 +137,7 @@ export function EditBarberDialog({ barber, isOpen, onOpenChange }: EditBarberDia
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button type="submit">Salvar</Button>
+          <SubmitButton pendingText="Salvando...">Salvar</SubmitButton>
         </div>
       </form>
     </Modal>
