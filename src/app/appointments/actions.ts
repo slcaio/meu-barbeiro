@@ -317,10 +317,31 @@ export async function completeAppointmentWithTransaction(formData: FormData) {
   const description = formData.get('description') as string
   const paymentMethodId = formData.get('payment_method_id') as string | null
   const installments = Number(formData.get('installments') || '1')
+  const productsJson = formData.get('products_json') as string | null
 
   if (!appointmentId || !action) {
     return { error: 'Dados incompletos.' }
   }
+
+  // Parse products if provided
+  type ProductItem = { product_id: string; quantity: number; price_at_time: number; barber_id?: string }
+  let productItems: ProductItem[] = []
+  if (productsJson) {
+    try {
+      const parsed = JSON.parse(productsJson)
+      if (Array.isArray(parsed)) {
+        productItems = parsed.filter(
+          (p: ProductItem) => p.product_id && p.quantity > 0 && p.price_at_time >= 0
+        )
+      }
+    } catch {
+      return { error: 'Dados de produtos inválidos.' }
+    }
+  }
+
+  const productsTotal = productItems.reduce((sum, p) => sum + p.quantity * p.price_at_time, 0)
+  const servicesAmount = amount // amount from form = services total
+  const grandTotal = servicesAmount + productsTotal
 
   // Determine status
   const status = action === 'complete' ? 'completed' : 'cancelled'
@@ -334,7 +355,7 @@ export async function completeAppointmentWithTransaction(formData: FormData) {
   } = { status }
   
   if (action === 'complete') {
-    updateData.total_amount = amount
+    updateData.total_amount = grandTotal
     updateData.payment_status = 'paid'
     updateData.installments = installments
     if (paymentMethodId) {
@@ -342,7 +363,7 @@ export async function completeAppointmentWithTransaction(formData: FormData) {
     }
   } else if (action === 'cancel') {
      if (amount > 0) {
-        updateData.total_amount = amount // Cancellation fee
+        updateData.total_amount = amount
         updateData.payment_status = 'paid' 
      }
   }
@@ -357,114 +378,217 @@ export async function completeAppointmentWithTransaction(formData: FormData) {
     return { error: 'Erro ao atualizar agendamento.' }
   }
 
-  // Create financial record if amount > 0
-  if (amount > 0) {
-      const { data: barbershop } = await supabase
-        .from('barbershops')
-        .select('id')
-        .eq('user_id', user.id)
+  const { data: barbershop } = await supabase
+    .from('barbershops')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (!barbershop) return { error: 'Barbearia não encontrada.' }
+
+  const recordDate = new Date().toISOString().split('T')[0]
+
+  // --- Service income ---
+  if (servicesAmount > 0) {
+    const { error: transactionError } = await supabase
+      .from('financial_records')
+      .insert({
+        barbershop_id: barbershop.id,
+        type: 'income',
+        amount: servicesAmount,
+        category: action === 'complete' ? 'Serviço' : 'Outros',
+        description: description,
+        payment_method_id: paymentMethodId || null,
+        record_date: recordDate,
+      })
+
+    if (transactionError) {
+      console.error('Error creating service transaction:', transactionError)
+      return { error: 'Agendamento atualizado, mas erro ao criar transação de serviços.' }
+    }
+  }
+
+  // --- Product processing ---
+  if (action === 'complete' && productItems.length > 0) {
+    for (const item of productItems) {
+      // Validate stock
+      const { data: product } = await supabase
+        .from('products')
+        .select('id, name, current_stock, commission_percentage')
+        .eq('id', item.product_id)
+        .eq('barbershop_id', barbershop.id)
         .single()
 
-      if (!barbershop) return { error: 'Barbearia não encontrada.' }
+      if (!product) continue
+      if (product.current_stock < item.quantity) {
+        return { error: `Estoque insuficiente para ${product.name}. Disponível: ${product.current_stock} un.` }
+      }
 
-      const { error: transactionError } = await supabase
+      const itemTotal = item.quantity * item.price_at_time
+
+      // Create stock movement (exit)
+      const { data: movement } = await supabase
+        .from('stock_movements')
+        .insert({
+          product_id: item.product_id,
+          barbershop_id: barbershop.id,
+          type: 'exit',
+          quantity: item.quantity,
+          unit_cost: item.price_at_time,
+          total_cost: itemTotal,
+          source: 'sale',
+          financial_status: 'none',
+          barber_id: item.barber_id || null,
+          notes: `Venda via agendamento ${appointmentId}`,
+        })
+        .select('id')
+        .single()
+
+      // Decrement stock
+      await supabase.rpc('increment_stock', {
+        p_product_id: item.product_id,
+        p_quantity: -item.quantity,
+      })
+
+      // Create product income record
+      const { data: record } = await supabase
         .from('financial_records')
         .insert({
           barbershop_id: barbershop.id,
           type: 'income',
-          amount: amount,
-          category: action === 'complete' ? 'Serviço' : 'Outros',
-          description: description,
+          amount: itemTotal,
+          category: 'Produto',
+          description: `Venda: ${product.name} x${item.quantity}`,
+          stock_movement_id: movement?.id || null,
           payment_method_id: paymentMethodId || null,
-          record_date: new Date().toISOString().split('T')[0],
+          record_date: recordDate,
         })
+        .select('id')
+        .single()
 
-      if (transactionError) {
-        console.error('Error creating transaction:', transactionError)
-        return { error: 'Agendamento atualizado, mas erro ao criar transação financeira.' }
+      // Cross-link movement → financial record
+      if (movement && record) {
+        await supabase
+          .from('stock_movements')
+          .update({ reference_id: record.id })
+          .eq('id', movement.id)
       }
 
-      // Register payment method fee if applicable
-      if (action === 'complete' && paymentMethodId) {
-        const { data: paymentMethod } = await supabase
-          .from('payment_methods')
-          .select('name, fee_type, fee_value, supports_installments')
-          .eq('id', paymentMethodId)
+      // Product commission (per product, per barber)
+      if (item.barber_id && product.commission_percentage > 0) {
+        const { data: barber } = await supabase
+          .from('barbers')
+          .select('name')
+          .eq('id', item.barber_id)
           .single()
 
-        if (paymentMethod) {
-          let feeAmount = 0
-          let feeDescription = ''
-
-          if (installments > 1 && paymentMethod.supports_installments) {
-            // Use installment-specific fee from payment_method_installments
-            const { data: installmentTier } = await supabase
-              .from('payment_method_installments')
-              .select('fee_percentage')
-              .eq('payment_method_id', paymentMethodId)
-              .eq('installment_number', installments)
-              .single()
-
-            if (installmentTier && installmentTier.fee_percentage > 0) {
-              feeAmount = amount * (installmentTier.fee_percentage / 100)
-              feeDescription = `Taxa ${paymentMethod.name} ${installments}x - ${installmentTier.fee_percentage}%`
-            }
-          } else if (paymentMethod.fee_value > 0) {
-            // Use base fee (1x / à vista)
-            feeAmount = paymentMethod.fee_type === 'percentage'
-              ? amount * (paymentMethod.fee_value / 100)
-              : paymentMethod.fee_value
-            feeDescription = `Taxa ${paymentMethod.name} - ${paymentMethod.fee_type === 'percentage' ? `${paymentMethod.fee_value}%` : `R$ ${paymentMethod.fee_value.toFixed(2)}`}`
-          }
-
-          if (feeAmount > 0) {
-            await supabase.from('financial_records').insert({
-              barbershop_id: barbershop.id,
-              type: 'expense',
-              amount: feeAmount,
-              category: 'Taxa de Pagamento',
-              description: feeDescription,
-              payment_method_id: paymentMethodId,
-              record_date: new Date().toISOString().split('T')[0],
-            })
-          }
-        }
-      }
-
-      // Register barber commission if applicable
-      if (action === 'complete') {
-        const { data: appointment } = await supabase
-          .from('appointments')
-          .select('barber_id')
-          .eq('id', appointmentId)
-          .single()
-
-        if (appointment?.barber_id) {
-          const { data: barber } = await supabase
-            .from('barbers')
-            .select('commission_percentage, name')
-            .eq('id', appointment.barber_id)
-            .single()
-
-          if (barber && barber.commission_percentage > 0) {
-            const commissionAmount = amount * (barber.commission_percentage / 100)
-
+        if (barber) {
+          const commissionAmount = itemTotal * (product.commission_percentage / 100)
+          if (commissionAmount > 0) {
             await supabase.from('financial_records').insert({
               barbershop_id: barbershop.id,
               type: 'expense',
               amount: commissionAmount,
               category: 'Comissão',
-              description: `Comissão ${barber.name} - ${barber.commission_percentage}%`,
-              record_date: new Date().toISOString().split('T')[0],
+              description: `Comissão ${barber.name} - Produto ${product.name} ${product.commission_percentage}%`,
+              record_date: recordDate,
             })
           }
         }
       }
+    }
+
+    // Insert appointment_products junction rows
+    const productRows = productItems.map(p => ({
+      appointment_id: appointmentId,
+      product_id: p.product_id,
+      quantity: p.quantity,
+      price_at_time: p.price_at_time,
+      barber_id: p.barber_id || null,
+    }))
+
+    await supabase.from('appointment_products').insert(productRows)
+  }
+
+  // --- Payment method fee (on grand total) ---
+  if (action === 'complete' && paymentMethodId && grandTotal > 0) {
+    const { data: paymentMethod } = await supabase
+      .from('payment_methods')
+      .select('name, fee_type, fee_value, supports_installments')
+      .eq('id', paymentMethodId)
+      .single()
+
+    if (paymentMethod) {
+      let feeAmount = 0
+      let feeDescription = ''
+
+      if (installments > 1 && paymentMethod.supports_installments) {
+        const { data: installmentTier } = await supabase
+          .from('payment_method_installments')
+          .select('fee_percentage')
+          .eq('payment_method_id', paymentMethodId)
+          .eq('installment_number', installments)
+          .single()
+
+        if (installmentTier && installmentTier.fee_percentage > 0) {
+          feeAmount = grandTotal * (installmentTier.fee_percentage / 100)
+          feeDescription = `Taxa ${paymentMethod.name} ${installments}x - ${installmentTier.fee_percentage}%`
+        }
+      } else if (paymentMethod.fee_value > 0) {
+        feeAmount = paymentMethod.fee_type === 'percentage'
+          ? grandTotal * (paymentMethod.fee_value / 100)
+          : paymentMethod.fee_value
+        feeDescription = `Taxa ${paymentMethod.name} - ${paymentMethod.fee_type === 'percentage' ? `${paymentMethod.fee_value}%` : `R$ ${paymentMethod.fee_value.toFixed(2)}`}`
+      }
+
+      if (feeAmount > 0) {
+        await supabase.from('financial_records').insert({
+          barbershop_id: barbershop.id,
+          type: 'expense',
+          amount: feeAmount,
+          category: 'Taxa de Pagamento',
+          description: feeDescription,
+          payment_method_id: paymentMethodId,
+          record_date: recordDate,
+        })
+      }
+    }
+  }
+
+  // --- Barber commission on services ---
+  if (action === 'complete' && servicesAmount > 0) {
+    const { data: appointment } = await supabase
+      .from('appointments')
+      .select('barber_id')
+      .eq('id', appointmentId)
+      .single()
+
+    if (appointment?.barber_id) {
+      const { data: barber } = await supabase
+        .from('barbers')
+        .select('commission_percentage, name')
+        .eq('id', appointment.barber_id)
+        .single()
+
+      if (barber && barber.commission_percentage > 0) {
+        const commissionAmount = servicesAmount * (barber.commission_percentage / 100)
+
+        await supabase.from('financial_records').insert({
+          barbershop_id: barbershop.id,
+          type: 'expense',
+          amount: commissionAmount,
+          category: 'Comissão',
+          description: `Comissão ${barber.name} - Serviços ${barber.commission_percentage}%`,
+          record_date: recordDate,
+        })
+      }
+    }
   }
 
   revalidatePath('/appointments')
   revalidatePath('/dashboard')
   revalidatePath('/financial')
+  revalidatePath('/stock')
   
   return { success: 'Operação realizada com sucesso!' }
 }

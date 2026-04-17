@@ -35,6 +35,13 @@ export default async function StockPage() {
 
   const typedPaymentMethods = (paymentMethods ?? []) as unknown as PaymentMethodWithInstallments[]
 
+  const { data: barbers } = await supabase
+    .from('barbers')
+    .select('id, name, is_active')
+    .eq('barbershop_id', barbershop.id)
+    .eq('is_active', true)
+    .order('name')
+
   const lowStockCount = products.filter(p => p.min_stock > 0 && p.current_stock < p.min_stock).length
   const totalStockValue = products.reduce((sum, p) => sum + (p.cost_price * p.current_stock), 0)
   const totalSaleValue = products.reduce((sum, p) => sum + (p.sale_price * p.current_stock), 0)
@@ -52,7 +59,7 @@ export default async function StockPage() {
         <div className="flex flex-wrap gap-2">
           <CreateProductDialog />
           <StockEntryDialog products={products} />
-          <StockSaleDialog products={products} paymentMethods={typedPaymentMethods} />
+          <StockSaleDialog products={products} paymentMethods={typedPaymentMethods} barbers={barbers ?? []} />
         </div>
       </div>
 
@@ -127,7 +134,7 @@ export default async function StockPage() {
           <CardTitle className="text-base font-semibold">Produtos</CardTitle>
         </CardHeader>
         <CardContent>
-          <ProductList products={products} paymentMethods={typedPaymentMethods} />
+          <ProductList products={products} paymentMethods={typedPaymentMethods} barbers={barbers ?? []} />
         </CardContent>
       </Card>
 

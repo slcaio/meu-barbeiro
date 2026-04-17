@@ -14,11 +14,12 @@ import {
 } from '@/components/ui/select'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
 import { registerStockSale } from '@/app/stock/actions'
-import type { Product, PaymentMethodWithInstallments } from '@/types/database.types'
+import type { Product, PaymentMethodWithInstallments, BarberOption } from '@/types/database.types'
 
 interface StockSaleDialogProps {
   products: Product[]
   paymentMethods: PaymentMethodWithInstallments[]
+  barbers: BarberOption[]
   preselectedProductId?: string
   variant?: 'button' | 'icon'
 }
@@ -26,6 +27,7 @@ interface StockSaleDialogProps {
 export function StockSaleDialog({
   products,
   paymentMethods,
+  barbers,
   preselectedProductId,
   variant = 'button',
 }: StockSaleDialogProps) {
@@ -36,6 +38,7 @@ export function StockSaleDialog({
   const [unitPrice, setUnitPrice] = useState('')
   const [paymentMethodId, setPaymentMethodId] = useState('')
   const [selectedInstallments, setSelectedInstallments] = useState<number>(1)
+  const [barberId, setBarberId] = useState('')
 
   const selectedProduct = products.find(p => p.id === productId)
   const selectedMethod = paymentMethods.find(pm => pm.id === paymentMethodId)
@@ -70,6 +73,7 @@ export function StockSaleDialog({
     setUnitPrice('')
     setPaymentMethodId('')
     setSelectedInstallments(1)
+    setBarberId('')
     setIsOpen(true)
   }
 
@@ -80,6 +84,7 @@ export function StockSaleDialog({
     formData.set('unit_price', numericUnitPrice.toString())
     formData.set('payment_method_id', paymentMethodId)
     formData.set('installments', selectedInstallments.toString())
+    formData.set('barber_id', barberId === 'none' ? '' : barberId)
 
     const result = await registerStockSale(formData)
 
@@ -90,6 +95,7 @@ export function StockSaleDialog({
       setUnitPrice('')
       setPaymentMethodId('')
       setSelectedInstallments(1)
+      setBarberId('')
     } else if (result?.error) {
       alert(result.error)
     }
@@ -256,6 +262,28 @@ export function StockSaleDialog({
           <div className="flex flex-col gap-2">
             <span className="text-sm font-medium">Observações</span>
             <Input name="notes" placeholder="Observações (opcional)" />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Barbeiro (comissão)</span>
+            <Select value={barberId} onValueChange={setBarberId}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Nenhum (sem comissão)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Nenhum</SelectItem>
+                {barbers.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedProduct && selectedProduct.commission_percentage > 0 && barberId && (
+              <span className="text-xs text-muted-foreground">
+                Comissão: {selectedProduct.commission_percentage}% sobre o valor da venda
+              </span>
+            )}
           </div>
 
           <div className="pt-4 flex justify-end space-x-2">

@@ -5,9 +5,9 @@ import { updateAppointmentStatus } from '@/app/appointments/actions'
 import { Check, X, Clock } from 'lucide-react'
 import { useTransition, useState } from 'react'
 import { AppointmentPOSDialog } from './appointment-pos-dialog'
-import type { AppointmentWithRelations, PaymentMethodWithInstallments } from '@/types/database.types'
+import type { AppointmentWithRelations, PaymentMethodWithInstallments, ProductOption, BarberOption } from '@/types/database.types'
 
-export function AppointmentList({ appointments, paymentMethods = [] }: { appointments: AppointmentWithRelations[]; paymentMethods?: PaymentMethodWithInstallments[] }) {
+export function AppointmentList({ appointments, paymentMethods = [], products = [], barbers = [] }: { appointments: AppointmentWithRelations[]; paymentMethods?: PaymentMethodWithInstallments[]; products?: ProductOption[]; barbers?: BarberOption[] }) {
   const [isPending, startTransition] = useTransition()
   const [posOpen, setPosOpen] = useState(false)
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentWithRelations | null>(null)
@@ -100,6 +100,8 @@ export function AppointmentList({ appointments, paymentMethods = [] }: { appoint
         onOpenChange={setPosOpen}
         action={posAction}
         paymentMethods={paymentMethods}
+        products={products}
+        barbers={barbers}
       />
     </div>
   )

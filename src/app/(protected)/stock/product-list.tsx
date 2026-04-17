@@ -9,14 +9,15 @@ import { StockHistoryDialog } from './stock-history-dialog'
 import { StockSaleDialog } from './stock-sale-dialog'
 import { deleteProduct } from '@/app/stock/actions'
 import { cn } from '@/lib/utils'
-import type { Product, PaymentMethodWithInstallments } from '@/types/database.types'
+import type { Product, PaymentMethodWithInstallments, BarberOption } from '@/types/database.types'
 
 interface ProductListProps {
   products: Product[]
   paymentMethods: PaymentMethodWithInstallments[]
+  barbers: BarberOption[]
 }
 
-export function ProductList({ products, paymentMethods }: ProductListProps) {
+export function ProductList({ products, paymentMethods, barbers }: ProductListProps) {
   const [search, setSearch] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -112,6 +113,7 @@ export function ProductList({ products, paymentMethods }: ProductListProps) {
                       <StockSaleDialog
                         products={[product]}
                         paymentMethods={paymentMethods}
+                        barbers={barbers}
                         preselectedProductId={product.id}
                         variant="icon"
                       />
