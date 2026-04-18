@@ -13,6 +13,8 @@ import {
   Users,
   X,
   Package,
+  SidebarIcon,
+  ChevronLeft,
 } from 'lucide-react'
 import { useState, useEffect, useCallback } from 'react'
 import { Loader2 } from 'lucide-react'
@@ -38,6 +40,7 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [desktopCollapsed, setDesktopCollapsed] = useState(false)
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null)
 
   useEffect(() => {
@@ -63,8 +66,9 @@ export default function DashboardLayout({
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col bg-sidebar border-r border-sidebar-border transition-transform duration-300 ease-in-out md:translate-x-0",
-        sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        "fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col bg-sidebar border-r border-sidebar-border transition-transform duration-300 ease-in-out",
+        sidebarOpen ? "translate-x-0" : "-translate-x-full",
+        desktopCollapsed ? "md:-translate-x-full" : "md:translate-x-0"
       )}>
         {/* Sidebar Header */}
         <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-6">
@@ -80,6 +84,14 @@ export default function DashboardLayout({
             onClick={() => setSidebarOpen(false)}
           >
             <X className="h-5 w-5" />
+          </button>
+          {/* Desktop collapse button */}
+          <button
+            className="ml-auto hidden md:flex text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"
+            onClick={() => setDesktopCollapsed(true)}
+            title="Ocultar menu"
+          >
+            <ChevronLeft className="h-5 w-5" />
           </button>
         </div>
 
@@ -138,18 +150,34 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main Content */}
-      <div className="flex flex-1 flex-col md:pl-[280px]">
-        {/* Mobile Header */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-md px-4 md:hidden">
+      <div className={cn(
+        "flex flex-1 flex-col transition-[padding] duration-300 ease-in-out",
+        desktopCollapsed ? "md:pl-0" : "md:pl-[280px]"
+      )}>
+        {/* Top Header */}
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-background/80 backdrop-blur-md px-4">
+          {/* Mobile: open overlay */}
           <button
             type="button"
-            className="inline-flex items-center justify-center rounded-lg p-2 text-foreground/60 hover:bg-accent hover:text-foreground transition-colors"
+            className="inline-flex md:hidden items-center justify-center rounded-lg p-2 text-foreground/60 hover:bg-accent hover:text-foreground transition-colors"
             onClick={() => setSidebarOpen(true)}
           >
             <span className="sr-only">Abrir menu</span>
             <Menu className="h-5 w-5" />
           </button>
-          <div className="flex items-center gap-2">
+          {/* Desktop: toggle collapse — only shows when sidebar is hidden */}
+          {desktopCollapsed && (
+            <button
+              type="button"
+              className="hidden md:inline-flex items-center justify-center rounded-lg p-2 text-foreground/60 hover:bg-accent hover:text-foreground transition-colors"
+              onClick={() => setDesktopCollapsed(false)}
+              title="Mostrar menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          )}
+          {/* Brand: mobile always, desktop only when sidebar collapsed */}
+          <div className={cn("flex items-center gap-2", desktopCollapsed ? "flex" : "md:hidden")}>
             <Scissors className="h-5 w-5 text-primary" />
             <span className="text-base font-semibold text-foreground">Meu Barbeiro</span>
           </div>

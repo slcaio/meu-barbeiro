@@ -104,7 +104,7 @@ export function ClientList({ clients }: { clients: Client[] }) {
       </div>
 
       {/* Mobile card view */}
-      <div className="sm:hidden space-y-3">
+      <div className="cards:hidden space-y-3">
         {filteredClients.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
             {activeFilter === 'incomplete'
@@ -184,7 +184,7 @@ export function ClientList({ clients }: { clients: Client[] }) {
       </div>
 
       {/* Desktop table view */}
-      <div className="hidden sm:block rounded-md border">
+      <div className="hidden cards:block rounded-md border">
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
