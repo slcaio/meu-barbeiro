@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
-import { Search, ShoppingCart, Trash2 } from 'lucide-react'
+import { Search, ShoppingCart, Trash2, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { EditProductDialog } from './edit-product-dialog'
@@ -24,6 +24,16 @@ export function ProductList({ products, paymentMethods, barbers }: ProductListPr
   const [search, setSearch] = useState('')
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>('all')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [viewingPhoto, setViewingPhoto] = useState<{ url: string; name: string } | null>(null)
+
+  useEffect(() => {
+    if (!viewingPhoto) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setViewingPhoto(null)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [viewingPhoto])
 
   const lowStockCount = products.filter(p => p.min_stock > 0 && p.current_stock < p.min_stock).length
 
@@ -139,8 +149,13 @@ export function ProductList({ products, paymentMethods, barbers }: ProductListPr
                 <tr key={product.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
                   <td className="py-3 px-2">
                     <div className="flex items-center gap-3">
-                      <div className="relative h-10 w-10 shrink-0 rounded-md overflow-hidden bg-muted flex items-center justify-center">
-                        {product.photo_url ? (
+                      {product.photo_url ? (
+                        <button
+                          type="button"
+                          onClick={() => setViewingPhoto({ url: product.photo_url!, name: product.name })}
+                          className="relative h-10 w-10 shrink-0 rounded-md overflow-hidden bg-muted flex items-center justify-center cursor-pointer transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          title="Ver foto ampliada"
+                        >
                           <Image
                             src={product.photo_url}
                             alt={product.name}
@@ -148,12 +163,14 @@ export function ProductList({ products, paymentMethods, barbers }: ProductListPr
                             className="object-cover"
                             sizes="40px"
                           />
-                        ) : (
+                        </button>
+                      ) : (
+                        <div className="relative h-10 w-10 shrink-0 rounded-md overflow-hidden bg-muted flex items-center justify-center">
                           <span className="text-sm font-bold text-muted-foreground">
                             {product.name.charAt(0).toUpperCase()}
                           </span>
-                        )}
-                      </div>
+                        </div>
+                      )}
                       <div>
                         <span className="font-medium">{product.name}</span>
                         {product.description && (
@@ -212,6 +229,37 @@ export function ProductList({ products, paymentMethods, barbers }: ProductListPr
           </tbody>
         </table>
       </div>
+
+      {/* Photo lightbox */}
+      {viewingPhoto && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          onClick={() => setViewingPhoto(null)}
+        >
+          <div
+            className="relative max-w-[90vw] max-h-[90vh] w-full h-full flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative w-full h-full max-w-2xl max-h-[80vh]">
+              <Image
+                src={viewingPhoto.url}
+                alt={viewingPhoto.name}
+                fill
+                className="object-contain rounded-lg"
+                sizes="(max-width: 768px) 90vw, 672px"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setViewingPhoto(null)}
+              className="absolute top-2 right-2 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              title="Fechar"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
