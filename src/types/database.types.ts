@@ -569,6 +569,8 @@ export interface Database {
           description: string | null
           cost_price: number
           sale_price: number
+          average_cost: number
+          photo_url: string | null
           current_stock: number
           min_stock: number
           unit: string
@@ -584,6 +586,8 @@ export interface Database {
           description?: string | null
           cost_price?: number
           sale_price: number
+          average_cost?: number
+          photo_url?: string | null
           current_stock?: number
           min_stock?: number
           unit?: string
@@ -599,6 +603,8 @@ export interface Database {
           description?: string | null
           cost_price?: number
           sale_price?: number
+          average_cost?: number
+          photo_url?: string | null
           current_stock?: number
           min_stock?: number
           unit?: string

@@ -14,8 +14,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
-import { updateProduct } from '@/app/stock/actions'
+import { updateProduct, uploadProductPhoto } from '@/app/stock/actions'
 import type { Product } from '@/types/database.types'
+import { ProductPhotoUpload } from './product-photo-upload'
 
 interface EditProductDialogProps {
   product: Product
@@ -26,11 +27,15 @@ export function EditProductDialog({ product }: EditProductDialogProps) {
   const [costPrice, setCostPrice] = useState('')
   const [salePrice, setSalePrice] = useState('')
   const [unit, setUnit] = useState(product.unit)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [removePhoto, setRemovePhoto] = useState(false)
 
   const handleOpen = () => {
     setCostPrice(formatCurrency((product.cost_price * 100).toString()))
     setSalePrice(formatCurrency((product.sale_price * 100).toString()))
     setUnit(product.unit)
+    setPhotoFile(null)
+    setRemovePhoto(false)
     setIsOpen(true)
   }
 
@@ -50,9 +55,19 @@ export function EditProductDialog({ product }: EditProductDialogProps) {
     formData.set('sale_price', parseCurrency(salePrice).toString())
     formData.set('unit', unit)
 
+    // Signal photo removal to the action
+    if (removePhoto) formData.set('photo_url', '')
+
     const result = await updateProduct(formData)
 
     if (result?.success) {
+      // Upload new photo if selected
+      if (photoFile) {
+        const uploadData = new FormData()
+        uploadData.set('product_id', product.id)
+        uploadData.set('file', photoFile)
+        await uploadProductPhoto(uploadData)
+      }
       setIsOpen(false)
     } else if (result?.error) {
       alert(result.error)
@@ -142,6 +157,14 @@ export function EditProductDialog({ product }: EditProductDialogProps) {
           <p className="text-xs text-muted-foreground">
             Estoque atual: <strong>{product.current_stock} {product.unit}</strong> — controlado pelas movimentações.
           </p>
+
+          <ProductPhotoUpload
+            currentPhotoUrl={product.photo_url}
+            onFileSelect={(file) => {
+              setPhotoFile(file)
+              setRemovePhoto(file === null && !!product.photo_url)
+            }}
+          />
 
           <div className="pt-4 flex justify-end space-x-2">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>

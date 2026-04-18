@@ -152,7 +152,7 @@ describe('Stock Actions', () => {
         unit: 'un',
       })
       const result = await createProduct(formData)
-      expect(result).toEqual({ success: 'Produto cadastrado com sucesso!' })
+      expect(result).toEqual({ success: 'Produto cadastrado com sucesso!', productId: 'product-1' })
     })
 
     it('retorna erro de nome duplicado', async () => {
@@ -305,18 +305,41 @@ describe('Stock Actions', () => {
         data: { user: { id: 'user-123' } },
       })
       const barbershopChain = mockChain({ id: 'barbershop-1' })
-      const productChain = {
+
+      // First products query: checks product existence (returns { id })
+      const productExistChain = {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
         single: vi.fn().mockResolvedValue({ data: { id: 'product-1' }, error: null }),
       }
+      // Second products query: fetches current_stock + average_cost for WAC recalculation
+      const productStockChain = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
+          data: { current_stock: 5, average_cost: 10 },
+          error: null,
+        }),
+      }
+      // Third products call: update average_cost
+      const productUpdateChain = {
+        update: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+      }
+
       const insertChain = {
         insert: vi.fn().mockResolvedValue({ error: null }),
       }
 
+      let productCallCount = 0
       mockFrom.mockImplementation((table: string) => {
         if (table === 'barbershops') return barbershopChain
-        if (table === 'products') return productChain
+        if (table === 'products') {
+          productCallCount++
+          if (productCallCount === 1) return productExistChain
+          if (productCallCount === 2) return productStockChain
+          return productUpdateChain
+        }
         return insertChain
       })
 
@@ -329,6 +352,55 @@ describe('Stock Actions', () => {
       })
       const result = await registerStockEntry(formData)
       expect(result).toEqual({ success: 'Entrada registrada com sucesso!' })
+    })
+
+    it('calcula custo médio ponderado corretamente ao registrar entrada', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: { id: 'user-123' } },
+      })
+      const barbershopChain = mockChain({ id: 'barbershop-1' })
+      const productExistChain = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: { id: 'product-1' }, error: null }),
+      }
+      // 50 un @ R$10 já existentes → novo CMP com 30 un @ R$12
+      // esperado: (50*10 + 30*12) / 80 = 860/80 = 10.75
+      const productStockChain = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
+          data: { current_stock: 50, average_cost: 10 },
+          error: null,
+        }),
+      }
+      const updateFn = vi.fn().mockReturnThis()
+      const eqFn = vi.fn().mockReturnThis()
+      const productUpdateChain = { update: updateFn, eq: eqFn }
+
+      const insertChain = { insert: vi.fn().mockResolvedValue({ error: null }) }
+
+      let productCallCount = 0
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'barbershops') return barbershopChain
+        if (table === 'products') {
+          productCallCount++
+          if (productCallCount === 1) return productExistChain
+          if (productCallCount === 2) return productStockChain
+          return productUpdateChain
+        }
+        return insertChain
+      })
+
+      const { registerStockEntry } = await import('./actions')
+      const formData = createFormData({
+        product_id: '550e8400-e29b-41d4-a716-446655440000',
+        quantity: '30',
+        unit_cost: '12',
+      })
+      await registerStockEntry(formData)
+
+      expect(updateFn).toHaveBeenCalledWith({ average_cost: 10.75 })
     })
   })
 
@@ -611,6 +683,116 @@ describe('Stock Actions', () => {
       })
       const result = await adjustStock(formData)
       expect(result).toEqual({ success: 'Estoque ajustado com sucesso!' })
+    })
+  })
+
+  // ============================================================
+  // uploadProductPhoto
+  // ============================================================
+
+  describe('uploadProductPhoto', () => {
+    const makeFile = (type = 'image/jpeg', size = 1024) => {
+      const file = new File(['x'.repeat(size)], 'photo.jpg', { type })
+      return file
+    }
+
+    it('retorna erro se não autenticado', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({ data: { user: null } })
+      const { uploadProductPhoto } = await import('./actions')
+      const formData = createFormData({ product_id: '550e8400-e29b-41d4-a716-446655440000' })
+      formData.set('file', makeFile())
+      const result = await uploadProductPhoto(formData)
+      expect(result).toEqual({ error: 'Usuário não autenticado.' })
+    })
+
+    it('retorna erro para formato inválido', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } })
+      const barbershopChain = mockChain({ id: 'bs-1' })
+      mockFrom.mockReturnValue(barbershopChain)
+      const { uploadProductPhoto } = await import('./actions')
+      const formData = createFormData({ product_id: '550e8400-e29b-41d4-a716-446655440000' })
+      formData.set('file', makeFile('image/gif'))
+      const result = await uploadProductPhoto(formData)
+      expect(result).toEqual({ error: 'Formato inválido. Use JPEG, PNG ou WebP.' })
+    })
+
+    it('retorna erro para arquivo acima de 2MB', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } })
+      const barbershopChain = mockChain({ id: 'bs-1' })
+      mockFrom.mockReturnValue(barbershopChain)
+      const { uploadProductPhoto } = await import('./actions')
+      const formData = createFormData({ product_id: '550e8400-e29b-41d4-a716-446655440000' })
+      formData.set('file', makeFile('image/jpeg', 3 * 1024 * 1024))
+      const result = await uploadProductPhoto(formData)
+      expect(result).toEqual({ error: 'Imagem deve ter no máximo 2MB.' })
+    })
+
+    it('retorna erro se produto não encontrado', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } })
+      const barbershopChain = mockChain({ id: 'bs-1' })
+      const productChain = mockChain(null)
+      let fromCount = 0
+      mockFrom.mockImplementation(() => {
+        fromCount++
+        return fromCount === 1 ? barbershopChain : productChain
+      })
+      const { uploadProductPhoto } = await import('./actions')
+      const formData = createFormData({ product_id: '550e8400-e29b-41d4-a716-446655440000' })
+      formData.set('file', makeFile())
+      const result = await uploadProductPhoto(formData)
+      expect(result).toEqual({ error: 'Produto não encontrado.' })
+    })
+
+    it('retorna erro se upload falhar', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } })
+      const barbershopChain = mockChain({ id: 'bs-1' })
+      const productChain = mockChain({ id: 'product-1' })
+      let fromCount = 0
+      mockFrom.mockImplementation(() => {
+        fromCount++
+        return fromCount === 1 ? barbershopChain : productChain
+      })
+      const storageMock = {
+        from: vi.fn().mockReturnValue({
+          upload: vi.fn().mockResolvedValue({ error: { message: 'Storage error' } }),
+          getPublicUrl: vi.fn(),
+        }),
+      }
+      ;(mockSupabase as unknown as Record<string, unknown>).storage = storageMock
+      const { uploadProductPhoto } = await import('./actions')
+      const formData = createFormData({ product_id: '550e8400-e29b-41d4-a716-446655440000' })
+      formData.set('file', makeFile())
+      const result = await uploadProductPhoto(formData)
+      expect(result).toEqual({ error: 'Erro ao fazer upload da foto.' })
+    })
+
+    it('faz upload e atualiza photo_url com sucesso', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } })
+      const barbershopChain = mockChain({ id: 'bs-1' })
+      const productChain = mockChain({ id: 'product-1' })
+      const finalEqChain = { eq: vi.fn().mockResolvedValue({ error: null }) }
+      const updateChain = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnValue(finalEqChain) }
+      let fromCount = 0
+      mockFrom.mockImplementation((table: string) => {
+        fromCount++
+        if (fromCount === 1) return barbershopChain
+        if (fromCount === 2) return productChain
+        if (table === 'products') return updateChain
+        return mockChain()
+      })
+      const publicUrl = 'https://example.supabase.co/storage/v1/object/public/product-photos/bs-1/product-1.jpg'
+      const storageMock = {
+        from: vi.fn().mockReturnValue({
+          upload: vi.fn().mockResolvedValue({ error: null }),
+          getPublicUrl: vi.fn().mockReturnValue({ data: { publicUrl } }),
+        }),
+      }
+      ;(mockSupabase as unknown as Record<string, unknown>).storage = storageMock
+      const { uploadProductPhoto } = await import('./actions')
+      const formData = createFormData({ product_id: '550e8400-e29b-41d4-a716-446655440000' })
+      formData.set('file', makeFile())
+      const result = await uploadProductPhoto(formData)
+      expect(result).toEqual({ success: true, url: publicUrl })
     })
   })
 })

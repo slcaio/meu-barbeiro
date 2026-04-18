@@ -54,6 +54,20 @@ const adjustStockSchema = z.object({
 })
 
 // ============================================================
+// Helper: extract storage path from a product photo URL
+// ============================================================
+
+function extractStoragePath(photoUrl: string): string | null {
+  try {
+    const url = new URL(photoUrl)
+    const match = url.pathname.match(/\/product-photos\/(.+)/)
+    return match ? decodeURIComponent(match[1]) : null
+  } catch {
+    return null
+  }
+}
+
+// ============================================================
 // Helper: get authenticated user + barbershop
 // ============================================================
 
@@ -130,6 +144,8 @@ export async function createProduct(formData: FormData) {
       description: validation.data.description || null,
       cost_price: validation.data.cost_price,
       sale_price: validation.data.sale_price,
+      average_cost: validation.data.cost_price,
+      photo_url: (formData.get('photo_url') as string) || null,
       current_stock: validation.data.initial_stock,
       min_stock: validation.data.min_stock,
       unit: validation.data.unit,
@@ -159,7 +175,7 @@ export async function createProduct(formData: FormData) {
   }
 
   revalidatePath('/stock')
-  return { success: 'Produto cadastrado com sucesso!' }
+  return { success: 'Produto cadastrado com sucesso!', productId: product.id }
 }
 
 // ============================================================
@@ -185,6 +201,23 @@ export async function updateProduct(formData: FormData) {
   const validation = updateProductSchema.safeParse(rawData)
   if (!validation.success) return { error: 'Dados inválidos. Verifique os campos.' }
 
+  // When removing the photo, also delete the file from storage
+  const isRemovingPhoto = formData.has('photo_url') && !(formData.get('photo_url') as string)
+  if (isRemovingPhoto) {
+    const { data: current } = await supabase
+      .from('products')
+      .select('photo_url')
+      .eq('id', validation.data.id)
+      .eq('barbershop_id', barbershop.id)
+      .single()
+    if (current?.photo_url) {
+      const oldPath = extractStoragePath(current.photo_url)
+      if (oldPath) {
+        await supabase.storage.from('product-photos').remove([oldPath])
+      }
+    }
+  }
+
   const { error } = await supabase
     .from('products')
     .update({
@@ -195,6 +228,7 @@ export async function updateProduct(formData: FormData) {
       min_stock: validation.data.min_stock,
       unit: validation.data.unit,
       commission_percentage: validation.data.commission_percentage,
+      ...(formData.has('photo_url') && { photo_url: (formData.get('photo_url') as string) || null }),
     })
     .eq('id', validation.data.id)
     .eq('barbershop_id', barbershop.id)
@@ -280,6 +314,13 @@ export async function registerStockEntry(formData: FormData) {
 
   if (!product) return { error: 'Produto não encontrado.' }
 
+  const { data: productStock } = await supabase
+    .from('products')
+    .select('current_stock, average_cost')
+    .eq('id', validation.data.product_id)
+    .eq('barbershop_id', barbershop.id)
+    .single()
+
   const totalCost = validation.data.quantity * validation.data.unit_cost
 
   const { error: mvError } = await supabase.from('stock_movements').insert({
@@ -303,6 +344,22 @@ export async function registerStockEntry(formData: FormData) {
     p_product_id: validation.data.product_id,
     p_quantity: validation.data.quantity,
   })
+
+  // Recalculate Weighted Average Cost (WAC)
+  if (productStock) {
+    const prevStock = productStock.current_stock
+    const prevAvg = productStock.average_cost ?? 0
+    const newStock = prevStock + validation.data.quantity
+    const newAverageCost = newStock > 0
+      ? (prevStock * prevAvg + validation.data.quantity * validation.data.unit_cost) / newStock
+      : validation.data.unit_cost
+
+    await supabase
+      .from('products')
+      .update({ average_cost: Math.round(newAverageCost * 100) / 100 })
+      .eq('id', validation.data.product_id)
+      .eq('barbershop_id', barbershop.id)
+  }
 
   revalidatePath('/stock')
   return { success: 'Entrada registrada com sucesso!' }
@@ -653,4 +710,76 @@ export async function getStockMovements(productId: string) {
 
   if (error) throw error
   return data
+}
+
+// ============================================================
+// UPLOAD — Product Photo
+// ============================================================
+
+export async function uploadProductPhoto(formData: FormData) {
+  const { supabase, user, barbershop } = await getAuthContext()
+  if (!user) return { error: 'Usuário não autenticado.' }
+  if (!barbershop) return { error: 'Barbearia não encontrada.' }
+
+  const productId = formData.get('product_id') as string | null
+  const file = formData.get('file') as File | null
+
+  if (!productId) return { error: 'ID do produto é obrigatório.' }
+  if (!file || file.size === 0) return { error: 'Arquivo não enviado.' }
+
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return { error: 'Formato inválido. Use JPEG, PNG ou WebP.' }
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    return { error: 'Imagem deve ter no máximo 2MB.' }
+  }
+
+  const { data: product } = await supabase
+    .from('products')
+    .select('id, photo_url')
+    .eq('id', productId)
+    .eq('barbershop_id', barbershop.id)
+    .single()
+
+  if (!product) return { error: 'Produto não encontrado.' }
+
+  // Delete old photo from storage to avoid stale cache
+  if (product.photo_url) {
+    const oldPath = extractStoragePath(product.photo_url)
+    if (oldPath) {
+      await supabase.storage.from('product-photos').remove([oldPath])
+    }
+  }
+
+  const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
+  const uniqueId = crypto.randomUUID()
+  const storagePath = `${barbershop.id}/${productId}_${uniqueId}.${ext}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('product-photos')
+    .upload(storagePath, file, { contentType: file.type })
+
+  if (uploadError) {
+    console.error('Error uploading product photo:', uploadError)
+    return { error: 'Erro ao fazer upload da foto.' }
+  }
+
+  const { data: { publicUrl } } = supabase.storage
+    .from('product-photos')
+    .getPublicUrl(storagePath)
+
+  const { error: updateError } = await supabase
+    .from('products')
+    .update({ photo_url: publicUrl })
+    .eq('id', productId)
+    .eq('barbershop_id', barbershop.id)
+
+  if (updateError) {
+    console.error('Error updating product photo_url:', updateError)
+    return { error: 'Erro ao salvar URL da foto.' }
+  }
+
+  revalidatePath('/stock')
+  return { success: true, url: publicUrl }
 }
