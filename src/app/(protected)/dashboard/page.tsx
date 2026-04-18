@@ -324,6 +324,8 @@ async function QuickActionsSection({ barbershopId }: { barbershopId: string }) {
     { data: clients },
     { data: barbers },
     { data: categories },
+    { data: products },
+    { data: paymentMethods },
   ] = await Promise.all([
     supabase
       .from('services')
@@ -346,6 +348,18 @@ async function QuickActionsSection({ barbershopId }: { barbershopId: string }) {
       .select('*')
       .eq('barbershop_id', barbershopId)
       .order('name'),
+    supabase
+      .from('products')
+      .select('*')
+      .eq('barbershop_id', barbershopId)
+      .eq('is_active', true)
+      .order('name'),
+    supabase
+      .from('payment_methods')
+      .select('*, installment_options(*)')
+      .eq('barbershop_id', barbershopId)
+      .eq('is_active', true)
+      .order('name'),
   ])
 
   return (
@@ -359,6 +373,8 @@ async function QuickActionsSection({ barbershopId }: { barbershopId: string }) {
           clients={clients || []}
           barbers={barbers || []}
           categories={categories || []}
+          products={products || []}
+          paymentMethods={paymentMethods || []}
         />
       </CardContent>
     </Card>

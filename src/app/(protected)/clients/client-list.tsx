@@ -103,7 +103,88 @@ export function ClientList({ clients }: { clients: Client[] }) {
         </div>
       </div>
 
-      <div className="rounded-md border">
+      {/* Mobile card view */}
+      <div className="sm:hidden space-y-3">
+        {filteredClients.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            {activeFilter === 'incomplete'
+              ? 'Nenhum cliente com dados incompletos.'
+              : 'Nenhum cliente encontrado.'}
+          </p>
+        ) : (
+          filteredClients.map((client) => {
+            const missingData = !client.cpf && !client.email
+            return (
+              <div key={client.id} className="rounded-xl border bg-card p-3 space-y-3">
+                {/* Header */}
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                    {client.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold truncate">{client.name}</span>
+                      {missingData && (
+                        <span className="shrink-0 inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+                          Incompleto
+                        </span>
+                      )}
+                    </div>
+                    {client.phone && (
+                      <p className="text-xs text-muted-foreground">{formatPhone(client.phone)}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Info */}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm border-t pt-3">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs text-muted-foreground">Email</span>
+                    {client.email ? (
+                      <p className="truncate">{client.email}</p>
+                    ) : (
+                      <span className="self-start inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">Faltando</span>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs text-muted-foreground">CPF</span>
+                    {client.cpf ? (
+                      <p>{formatCPF(client.cpf)}</p>
+                    ) : (
+                      <span className="self-start inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">Faltando</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center justify-end gap-1 border-t pt-3">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="text-muted-foreground hover:text-primary hover:bg-primary/10 h-8 w-8"
+                    onClick={() => handleEdit(client)}
+                    disabled={isPending}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="text-muted-foreground hover:text-red-600 hover:bg-red-500/10 h-8 w-8"
+                    onClick={() => handleDelete(client.id)}
+                    disabled={isPending}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      {/* Desktop table view */}
+      <div className="hidden sm:block rounded-md border">
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
