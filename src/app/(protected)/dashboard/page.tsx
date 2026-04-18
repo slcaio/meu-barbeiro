@@ -356,7 +356,7 @@ async function QuickActionsSection({ barbershopId }: { barbershopId: string }) {
       .order('name'),
     supabase
       .from('payment_methods')
-      .select('*, installment_options(*)')
+      .select('*, payment_method_installments(installment_number, fee_percentage)')
       .eq('barbershop_id', barbershopId)
       .eq('is_active', true)
       .order('name'),
@@ -374,7 +374,7 @@ async function QuickActionsSection({ barbershopId }: { barbershopId: string }) {
           barbers={barbers || []}
           categories={categories || []}
           products={products || []}
-          paymentMethods={paymentMethods || []}
+          paymentMethods={(paymentMethods || []) as unknown as import('@/types/database.types').PaymentMethodWithInstallments[]}
         />
       </CardContent>
     </Card>
