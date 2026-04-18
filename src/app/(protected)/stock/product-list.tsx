@@ -118,7 +118,102 @@ export function ProductList({ products, paymentMethods, barbers }: ProductListPr
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      {/* Mobile card view */}
+      <div className="sm:hidden space-y-3">
+        {filtered.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            {activeFilter === 'low_stock'
+              ? 'Nenhum produto com estoque abaixo do mínimo.'
+              : `Nenhum produto encontrado para "${search}".`}
+          </p>
+        ) : (
+          filtered.map((product) => {
+            const isLow = product.min_stock > 0 && product.current_stock < product.min_stock
+            const isWarning = product.min_stock > 0 && product.current_stock < product.min_stock * 1.5 && !isLow
+
+            return (
+              <div key={product.id} className="rounded-xl border bg-card p-3 space-y-3">
+                {/* Header: foto + nome + badge */}
+                <div className="flex items-start gap-3">
+                  {product.photo_url ? (
+                    <button
+                      type="button"
+                      onClick={() => setViewingPhoto({ url: product.photo_url!, name: product.name })}
+                      className="relative h-14 w-14 shrink-0 rounded-lg overflow-hidden bg-muted cursor-pointer transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      title="Ver foto ampliada"
+                    >
+                      <Image src={product.photo_url} alt={product.name} fill className="object-cover" sizes="56px" />
+                    </button>
+                  ) : (
+                    <div className="h-14 w-14 shrink-0 rounded-lg bg-muted flex items-center justify-center">
+                      <span className="text-lg font-bold text-muted-foreground">
+                        {product.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-semibold leading-tight">{product.name}</span>
+                      <span className={cn(
+                        'shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold',
+                        isLow && 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+                        isWarning && 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+                        !isLow && !isWarning && 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+                      )}>
+                        {product.current_stock} {product.unit}
+                      </span>
+                    </div>
+                    {product.description && (
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{product.description}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Info grid */}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm border-t pt-3">
+                  <div>
+                    <span className="text-xs text-muted-foreground">Preço de venda</span>
+                    <p className="font-semibold">{formatBRL(product.sale_price)}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground">Custo médio</span>
+                    <p className="text-muted-foreground">{formatBRL(product.average_cost)}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground">Estoque mínimo</span>
+                    <p className="text-muted-foreground">{product.min_stock}</p>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center justify-end gap-1 border-t pt-3">
+                  <EditProductDialog product={product} />
+                  <StockHistoryDialog product={product} />
+                  <StockSaleDialog
+                    products={[product]}
+                    paymentMethods={paymentMethods}
+                    barbers={barbers}
+                    preselectedProductId={product.id}
+                    variant="icon"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    onClick={() => handleDelete(product.id)}
+                    disabled={deletingId === product.id}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      {/* Desktop table view */}
+      <div className="hidden sm:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b">

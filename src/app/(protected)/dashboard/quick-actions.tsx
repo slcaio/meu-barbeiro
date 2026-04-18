@@ -11,7 +11,10 @@ const CreateAppointmentDialog = dynamic(() =>
 const AddTransactionDialog = dynamic(() =>
   import('../financial/add-transaction-dialog').then((mod) => mod.AddTransactionDialog)
 )
-import type { ServiceOption, BarberOption } from '@/types/database.types'
+const StockSaleDialog = dynamic(() =>
+  import('../stock/stock-sale-dialog').then((mod) => mod.StockSaleDialog)
+)
+import type { ServiceOption, BarberOption, Product, PaymentMethodWithInstallments } from '@/types/database.types'
 
 interface Client {
   id: string
@@ -31,9 +34,11 @@ interface QuickActionsProps {
   clients: Client[]
   barbers: BarberOption[]
   categories: Category[]
+  products: Product[]
+  paymentMethods: PaymentMethodWithInstallments[]
 }
 
-export function QuickActions({ services, clients, barbers, categories }: QuickActionsProps) {
+export function QuickActions({ services, clients, barbers, categories, products, paymentMethods }: QuickActionsProps) {
   const [appointmentOpen, setAppointmentOpen] = useState(false)
   const [expenseOpen, setExpenseOpen] = useState(false)
   const [incomeOpen, setIncomeOpen] = useState(false)
@@ -66,6 +71,13 @@ export function QuickActions({ services, clients, barbers, categories }: QuickAc
         <TrendingUp className="mr-2 h-4 w-4 text-green-600" />
         Registrar Receita
       </Button>
+
+      <StockSaleDialog
+        products={products}
+        paymentMethods={paymentMethods}
+        barbers={barbers}
+        variant="button"
+      />
 
       <CreateAppointmentDialog
         services={services}

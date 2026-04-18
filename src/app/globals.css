@@ -61,6 +61,9 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+
+  /* Custom breakpoints */
+  --breakpoint-cards: 970px;
 }
 
 :root {
@@ -158,6 +161,14 @@
       border-color 500ms ease-in-out, box-shadow 500ms ease-in-out,
       fill 500ms ease-in-out, stroke 500ms ease-in-out !important;
   }
+}
+
+/* ─── Recharts: remove focus outline on all elements ─── */
+.recharts-wrapper,
+.recharts-wrapper *,
+.recharts-wrapper svg,
+.recharts-wrapper svg * {
+  outline: none !important;
 }
 
 /* ─── Global scrollbar ─── */

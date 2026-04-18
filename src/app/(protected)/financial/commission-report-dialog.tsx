@@ -137,8 +137,9 @@ export function CommissionReportDialog() {
 
         <div className="space-y-6 overflow-y-auto flex-1 pr-1">
           {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-4 items-end">
-            <div className="flex flex-col gap-2 flex-1">
+          <div className="grid grid-cols-2 gap-3">
+            {/* Período — ocupa as 2 colunas */}
+            <div className="col-span-2 flex flex-col gap-1.5">
               <span className="text-sm font-medium">Período</span>
               <Popover>
                 <PopoverTrigger asChild>
@@ -149,19 +150,18 @@ export function CommissionReportDialog() {
                       !date && 'text-muted-foreground'
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date?.from ? (
-                      date.to ? (
-                        <>
-                          {format(date.from, 'dd/MM/y', { locale: ptBR })} -{' '}
-                          {format(date.to, 'dd/MM/y', { locale: ptBR })}
-                        </>
+                    <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                    <span className="truncate">
+                      {date?.from ? (
+                        date.to ? (
+                          `${format(date.from, 'dd/MM/yy', { locale: ptBR })} – ${format(date.to, 'dd/MM/yy', { locale: ptBR })}`
+                        ) : (
+                          format(date.from, 'dd/MM/yy', { locale: ptBR })
+                        )
                       ) : (
-                        format(date.from, 'dd/MM/y', { locale: ptBR })
-                      )
-                    ) : (
-                      <span>Selecione o período</span>
-                    )}
+                        'Selecione o período'
+                      )}
+                    </span>
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -178,10 +178,11 @@ export function CommissionReportDialog() {
               </Popover>
             </div>
 
-            <div className="flex flex-col gap-2">
+            {/* Barbeiro */}
+            <div className="flex flex-col gap-1.5">
               <span className="text-sm font-medium">Barbeiro</span>
               <Select value={selectedBarber} onValueChange={setSelectedBarber}>
-                <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
@@ -195,9 +196,13 @@ export function CommissionReportDialog() {
               </Select>
             </div>
 
-            <Button onClick={handleGenerate} disabled={isPending || !date?.from || !date?.to}>
-              {isPending ? 'Gerando...' : 'Gerar Relatório'}
-            </Button>
+            {/* Gerar — alinha ao fundo da segunda coluna */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium invisible">Ação</span>
+              <Button className="w-full" onClick={handleGenerate} disabled={isPending || !date?.from || !date?.to}>
+                {isPending ? 'Gerando...' : 'Gerar Relatório'}
+              </Button>
+            </div>
           </div>
 
           {/* Results */}
@@ -244,30 +249,37 @@ export function CommissionReportDialog() {
                       <button
                         type="button"
                         onClick={() => toggleBarber(item.barberId)}
-                        className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors text-left"
+                        className="w-full flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors text-left"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold text-sm shrink-0">
-                            {item.barberName.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="font-medium">{item.barberName}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {item.totalAppointments} atendimento{item.totalAppointments !== 1 ? 's' : ''} • Comissão: {item.commissionPercentage}%
-                            </p>
+                        {/* Avatar */}
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold text-sm shrink-0">
+                          {item.barberName.charAt(0).toUpperCase()}
+                        </div>
+
+                        {/* Name + meta — takes remaining space */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{item.barberName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {item.totalAppointments} atendimento{item.totalAppointments !== 1 ? 's' : ''} • {item.commissionPercentage}% comissão
+                          </p>
+                          {/* Commission values — shown inline on sm+, below name on mobile */}
+                          <div className="flex items-center gap-2 mt-0.5 sm:hidden">
+                            <span className="text-xs font-semibold text-amber-600">{formatBRL(item.commissionAmount)}</span>
+                            <span className="text-xs text-muted-foreground">de {formatBRL(item.totalRevenue)}</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <p className="text-sm font-semibold text-amber-600">{formatBRL(item.commissionAmount)}</p>
-                            <p className="text-xs text-muted-foreground">de {formatBRL(item.totalRevenue)}</p>
-                          </div>
-                          {expandedBarbers.has(item.barberId) ? (
-                            <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-                          )}
+
+                        {/* Commission values — visible only on sm+ */}
+                        <div className="hidden sm:block text-right shrink-0">
+                          <p className="text-sm font-semibold text-amber-600">{formatBRL(item.commissionAmount)}</p>
+                          <p className="text-xs text-muted-foreground">de {formatBRL(item.totalRevenue)}</p>
                         </div>
+
+                        {expandedBarbers.has(item.barberId) ? (
+                          <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                        )}
                       </button>
 
                       {/* Expanded Appointments */}
@@ -275,25 +287,28 @@ export function CommissionReportDialog() {
                         <div className="border-t bg-muted/20">
                           <div className="divide-y">
                             {item.appointments.map(apt => (
-                              <div key={apt.id} className="flex items-center justify-between px-4 py-3 text-sm">
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <p className="font-medium">{apt.description}</p>
-                                    {apt.type === 'product' && (
-                                      <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-violet-500/10 text-violet-600 dark:text-violet-400">
-                                        Produto
-                                      </span>
-                                    )}
+                              <div key={apt.id} className="px-4 py-3 text-sm">
+                                {/* Mobile: stacked layout */}
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      <p className="font-medium truncate">{apt.description}</p>
+                                      {apt.type === 'product' && (
+                                        <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-violet-500/10 text-violet-600 dark:text-violet-400 shrink-0">
+                                          Produto
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                      {new Date(apt.date).toLocaleDateString('pt-BR')}
+                                    </p>
                                   </div>
-                                  <p className="text-xs text-muted-foreground">
-                                    {new Date(apt.date).toLocaleDateString('pt-BR')}
-                                  </p>
-                                </div>
-                                <div className="text-right">
-                                  {apt.amount > 0 && (
-                                    <p className="text-muted-foreground">{formatBRL(apt.amount)}</p>
-                                  )}
-                                  <p className="text-xs font-medium text-amber-600">{formatBRL(apt.commission)}</p>
+                                  <div className="text-right shrink-0">
+                                    {apt.amount > 0 && (
+                                      <p className="text-xs text-muted-foreground">{formatBRL(apt.amount)}</p>
+                                    )}
+                                    <p className="text-xs font-semibold text-amber-600">{formatBRL(apt.commission)}</p>
+                                  </div>
                                 </div>
                               </div>
                             ))}
