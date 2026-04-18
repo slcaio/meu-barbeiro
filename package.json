@@ -13,8 +13,6 @@
     "test:ui": "vitest --ui"
   },
   "dependencies": {
-    "@bryntum/scheduler": "npm:@bryntum/scheduler-trial@^7.2.3",
-    "@bryntum/scheduler-react": "^7.2.3",
     "@radix-ui/react-dialog": "^1.1.15",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.96.0",
