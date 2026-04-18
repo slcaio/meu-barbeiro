@@ -2,11 +2,59 @@
 
 import { useRef, useState } from 'react'
 import Image from 'next/image'
-import { Camera, X } from 'lucide-react'
+import { Camera, Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const MAX_DIMENSION = 1200
+const JPEG_QUALITY = 0.85
 const MAX_SIZE_BYTES = 2 * 1024 * 1024
+
+function compressImage(file: File): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image()
+    const url = URL.createObjectURL(file)
+
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      let { width, height } = img
+
+      if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+        const ratio = Math.min(MAX_DIMENSION / width, MAX_DIMENSION / height)
+        width = Math.round(width * ratio)
+        height = Math.round(height * ratio)
+      }
+
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      if (!ctx) { reject(new Error('Canvas não suportado')); return }
+
+      ctx.drawImage(img, 0, 0, width, height)
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) { reject(new Error('Falha ao comprimir imagem')); return }
+          const compressed = new File(
+            [blob],
+            file.name.replace(/\.[^.]+$/, '.jpg'),
+            { type: 'image/jpeg' }
+          )
+          resolve(compressed)
+        },
+        'image/jpeg',
+        JPEG_QUALITY
+      )
+    }
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('Falha ao carregar imagem'))
+    }
+
+    img.src = url
+  })
+}
 
 interface ProductPhotoUploadProps {
   currentPhotoUrl?: string | null
@@ -17,24 +65,38 @@ export function ProductPhotoUpload({ currentPhotoUrl, onFileSelect }: ProductPho
   const inputRef = useRef<HTMLInputElement>(null)
   const [preview, setPreview] = useState<string | null>(currentPhotoUrl ?? null)
   const [error, setError] = useState<string | null>(null)
+  const [compressing, setCompressing] = useState(false)
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null
     setError(null)
     if (!file) return
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      setError('Formato inválido. Use JPEG, PNG ou WebP.')
+
+    if (!file.type.startsWith('image/')) {
+      setError('Formato inválido. Selecione uma imagem.')
       e.target.value = ''
       return
     }
-    if (file.size > MAX_SIZE_BYTES) {
-      setError('Imagem deve ter no máximo 2MB.')
+
+    setCompressing(true)
+    try {
+      const compressed = await compressImage(file)
+
+      if (compressed.size > MAX_SIZE_BYTES) {
+        setError('Imagem muito grande mesmo após compressão. Tente outra foto.')
+        e.target.value = ''
+        return
+      }
+
+      const objectUrl = URL.createObjectURL(compressed)
+      setPreview(objectUrl)
+      onFileSelect(compressed)
+    } catch {
+      setError('Não foi possível processar a imagem. Tente outra foto.')
       e.target.value = ''
-      return
+    } finally {
+      setCompressing(false)
     }
-    const objectUrl = URL.createObjectURL(file)
-    setPreview(objectUrl)
-    onFileSelect(file)
   }
 
   const handleRemove = () => {
@@ -59,7 +121,9 @@ export function ProductPhotoUpload({ currentPhotoUrl, onFileSelect }: ProductPho
           )}
           aria-label="Selecionar foto do produto"
         >
-          {preview ? (
+          {compressing ? (
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          ) : preview ? (
             <Image
               src={preview}
               alt="Preview do produto"
@@ -92,14 +156,14 @@ export function ProductPhotoUpload({ currentPhotoUrl, onFileSelect }: ProductPho
               </button>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">JPEG, PNG ou WebP • máx. 2MB</p>
+          <p className="text-xs text-muted-foreground">Qualquer formato de imagem • comprimido automaticamente</p>
           {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
       </div>
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp"
+        accept="image/*"
         className="hidden"
         onChange={handleFileChange}
         aria-hidden="true"
