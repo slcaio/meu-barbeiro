@@ -1,5 +1,7 @@
 'use client'
 
+import { useMemo } from 'react'
+import { startOfWeek, endOfWeek } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { updateAppointmentStatus } from '@/app/appointments/actions'
 import { Check, X, Clock } from 'lucide-react'
@@ -7,7 +9,17 @@ import { useTransition, useState } from 'react'
 import { AppointmentPOSDialog } from './appointment-pos-dialog'
 import type { AppointmentWithRelations, PaymentMethodWithInstallments, ProductOption, BarberOption } from '@/types/database.types'
 
-export function AppointmentList({ appointments, paymentMethods = [], products = [], barbers = [] }: { appointments: AppointmentWithRelations[]; paymentMethods?: PaymentMethodWithInstallments[]; products?: ProductOption[]; barbers?: BarberOption[] }) {
+export function AppointmentList({ appointments, paymentMethods = [], products = [], barbers = [], weekDate }: { appointments: AppointmentWithRelations[]; paymentMethods?: PaymentMethodWithInstallments[]; products?: ProductOption[]; barbers?: BarberOption[]; weekDate?: Date }) {
+  // Filter to current week when weekDate is provided
+  const filtered = useMemo(() => {
+    if (!weekDate) return appointments
+    const start = startOfWeek(weekDate, { weekStartsOn: 1 })
+    const end = endOfWeek(weekDate, { weekStartsOn: 1 })
+    return appointments.filter(apt => {
+      const d = new Date(apt.appointment_date)
+      return d >= start && d <= end
+    })
+  }, [appointments, weekDate])
   const [isPending, startTransition] = useTransition()
   const [posOpen, setPosOpen] = useState(false)
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentWithRelations | null>(null)
@@ -26,13 +38,13 @@ export function AppointmentList({ appointments, paymentMethods = [], products = 
     })
   }
 
-  if (appointments.length === 0) {
+  if (filtered.length === 0) {
     return <p className="text-sm text-muted-foreground text-center py-8">Nenhum agendamento encontrado.</p>
   }
 
   return (
     <div className="space-y-4">
-      {appointments.map((apt) => (
+      {filtered.map((apt) => (
         <div key={apt.id} className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-4 last:border-0 last:pb-0 gap-4">
           <div>
             <div className="flex items-center gap-2">

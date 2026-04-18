@@ -1,41 +1,21 @@
 'use client'
 
-import { useState, useCallback, useTransition, useMemo, useRef, useEffect } from 'react'
-import dynamic from 'next/dynamic'
-import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, addDays, subDays } from 'date-fns'
+import { useState, useCallback, useTransition, useMemo } from 'react'
+import { format, addDays, subDays, addWeeks, subWeeks } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarDays, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CreateAppointmentDialog } from './create-appointment-dialog'
 import { AppointmentDetailsDialog } from './appointment-details-dialog'
+import { AppointmentList } from './appointment-list'
+import { DayView } from './day-view'
+import { WeekView } from './week-view'
 import { updateAppointmentDate } from '@/app/appointments/actions'
-import { schedulerConfig, CALENDAR_START_HOUR, CALENDAR_END_HOUR } from './scheduler-config'
-import { useTheme } from 'next-themes'
-import type { BryntumScheduler } from '@bryntum/scheduler-react'
-import type { EventModel, ResourceModel } from '@bryntum/scheduler'
+import type { CalendarEvent } from './calendar-event'
 import type { AppointmentWithRelations, ServiceOption, ClientOption, BarberOption, PaymentMethodWithInstallments, ProductOption } from '@/types/database.types'
-
-// Bryntum CSS — structural + dark theme base (provides all component rendering)
-import '@bryntum/scheduler/scheduler.css'
-import '@bryntum/scheduler/svalbard-dark.css'
-
-// Custom overrides — remaps Bryntum's neutral palette to our CSS variables for auto light/dark
-import './scheduler-theme.css'
-
-// Dynamic import — Bryntum is client-only (no SSR)
-const SchedulerWrapper = dynamic(
-  () => import('@/components/bryntum/scheduler-wrapper'),
-  { ssr: false, loading: () => <div className="h-full flex items-center justify-center text-muted-foreground">Carregando agenda...</div> }
-)
-
-/** Escape HTML entities to prevent XSS in Bryntum HTML string renderers */
-function escapeHtml(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-}
-
-const NO_BARBER_RESOURCE_ID = '__no-barber__'
 
 const BARBER_COLORS = [
   { bg: '#3B82F6', border: '#2563EB', label: 'blue' },
@@ -50,7 +30,7 @@ const BARBER_COLORS = [
   { bg: '#6366F1', border: '#4F46E5', label: 'indigo' },
 ]
 
-type ViewMode = 'day' | 'week'
+type ViewMode = 'day' | 'week' | 'list'
 
 interface AppointmentsCalendarViewProps {
   appointments: AppointmentWithRelations[]
@@ -64,27 +44,13 @@ interface AppointmentsCalendarViewProps {
 export function AppointmentsCalendarView({ appointments, services, clients, barbers, paymentMethods, products }: AppointmentsCalendarViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('day')
   const [date, setDate] = useState(new Date())
+  const [selectedBarberFilter, setSelectedBarberFilter] = useState<string>('all')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<AppointmentWithRelations | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [selectedBarberId, setSelectedBarberId] = useState<string | undefined>(undefined)
-  const [isPending, startTransition] = useTransition()
-  const schedulerRef = useRef<BryntumScheduler>(null)
-  const { resolvedTheme } = useTheme()
-
-  // Force Bryntum to repaint when theme changes (CSS variables handle the actual colors)
-  useEffect(() => {
-    // Small delay so CSS variables from .dark class have been applied by the browser
-    const timer = setTimeout(() => {
-      const scheduler = schedulerRef.current?.instance
-      if (scheduler && !scheduler.isDestroyed) {
-        scheduler.element?.classList.remove('b-theme-svalbard-dark', 'b-theme-svalbard-light')
-        scheduler.renderContents()
-      }
-    }, 50)
-    return () => clearTimeout(timer)
-  }, [resolvedTheme])
+  const [, startTransition] = useTransition()
 
   // Map barber IDs to colors
   const barberColorMap = useMemo(() => {
@@ -95,46 +61,24 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
     return map
   }, [barbers])
 
-  // Transform barbers → Bryntum Resources
-  const resources = useMemo(() => {
-    const res = barbers.map((barber, index) => ({
-      id: barber.id,
-      name: barber.name,
-      eventColor: BARBER_COLORS[index % BARBER_COLORS.length].bg,
-    }))
+  // Filter appointments by selected barber
+  const filteredAppointments = useMemo(() => {
+    if (selectedBarberFilter === 'all') return appointments
+    return appointments.filter(apt => apt.barber_id === selectedBarberFilter)
+  }, [appointments, selectedBarberFilter])
 
-    // Fallback resource for appointments without a barber
-    const hasUnassigned = appointments.some(apt => !apt.barber_id)
-    if (hasUnassigned || barbers.length === 0) {
-      res.push({
-        id: NO_BARBER_RESOURCE_ID,
-        name: 'Sem barbeiro',
-        eventColor: '#71717a',
-      })
-    }
-
-    return res
-  }, [barbers, appointments])
-
-  // Transform appointments → Bryntum Events
-  const events = useMemo(() => {
-    return appointments.map(apt => {
+  // Transform appointments → CalendarEvent objects
+  const events: CalendarEvent[] = useMemo(() => {
+    return filteredAppointments.map(apt => {
       const startDate = new Date(apt.appointment_date)
-      const duration = apt.appointment_services.reduce((sum, as) => sum + (as.services?.duration_minutes || 0), 0) || 30
-      const endDate = new Date(startDate.getTime() + duration * 60000)
-      const barberId = apt.barber_id || NO_BARBER_RESOURCE_ID
+      const durationMinutes = apt.appointment_services.reduce((sum, as) => sum + (as.services?.duration_minutes || 0), 0) || 30
+      const endDate = new Date(startDate.getTime() + durationMinutes * 60_000)
       const barberColor = apt.barber_id ? barberColorMap.get(apt.barber_id) : null
 
       const isCancelled = apt.status === 'cancelled'
       const isCompleted = apt.status === 'completed'
 
-      const eventCls = isCancelled
-        ? 'event-cancelled'
-        : isCompleted
-          ? 'event-completed'
-          : ''
-
-      const bgColor = isCancelled ? '#71717a' : isCompleted ? '#22c55e' : (barberColor?.bg ?? '#3174ad')
+      const bgColor = isCancelled ? '#71717a' : isCompleted ? '#22c55e' : (barberColor?.bg ?? '#3B82F6')
       const borderColor = isCancelled ? '#52525b' : isCompleted ? '#16a34a' : (barberColor?.border ?? '#2563EB')
 
       const serviceNames = apt.appointment_services
@@ -144,72 +88,42 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
 
       return {
         id: apt.id,
-        resourceId: barberId,
-        name: `${apt.client_name} - ${serviceNames || 'Serviço'}`,
+        clientName: apt.client_name,
+        serviceName: serviceNames || 'Serviço',
+        barberName: apt.barbers?.name ?? '',
         startDate,
         endDate,
-        eventColor: bgColor,
-        style: `background:${bgColor};border-left:3px solid ${borderColor};`,
-        cls: eventCls,
-        // Custom data
-        appointmentData: apt,
-        clientName: apt.client_name,
-        serviceName: serviceNames,
-        barberName: apt.barbers?.name ?? '',
-        clientPhone: apt.client_phone,
+        durationMinutes,
         status: apt.status,
-        servicePrice: apt.total_amount,
-        serviceDuration: duration,
-        notes: apt.notes,
+        bgColor,
+        borderColor,
         draggable: !isCancelled && !isCompleted,
-        resizable: false,
       }
     })
-  }, [appointments, barberColorMap])
+  }, [filteredAppointments, barberColorMap])
 
-  // Calculate time span based on view mode and date
-  const timeSpan = useMemo(() => {
-    if (viewMode === 'day') {
-      const start = startOfDay(date)
-      start.setHours(CALENDAR_START_HOUR, 0, 0, 0)
-      const end = startOfDay(date)
-      end.setHours(CALENDAR_END_HOUR, 59, 59, 999)
-      return { startDate: start, endDate: end }
+  // Build a lookup map from event ID → appointment data (for click handler)
+  const appointmentMap = useMemo(() => {
+    const map = new Map<string, AppointmentWithRelations>()
+    for (const apt of filteredAppointments) {
+      map.set(apt.id, apt)
     }
-    const weekStart = startOfWeek(date, { locale: ptBR })
-    weekStart.setHours(CALENDAR_START_HOUR, 0, 0, 0)
-    const weekEnd = endOfWeek(date, { locale: ptBR })
-    weekEnd.setHours(CALENDAR_END_HOUR, 59, 59, 999)
-    return { startDate: weekStart, endDate: weekEnd }
-  }, [viewMode, date])
-
-  // Stable initial time span for Scheduler mount — never changes.
-  // All subsequent navigation is handled atomically via setTimeSpan() below.
-  const [initialTimeSpan] = useState(() => {
-    const start = startOfDay(new Date())
-    start.setHours(CALENDAR_START_HOUR, 0, 0, 0)
-    const end = startOfDay(new Date())
-    end.setHours(CALENDAR_END_HOUR, 59, 59, 999)
-    return { startDate: start, endDate: end }
-  })
-
-  // Atomically update start/end dates to avoid Bryntum "start > end" race condition.
-  // Passing startDate & endDate as separate dynamic props causes Bryntum to process
-  // them individually, leading to a transient invalid range when navigating backward.
-  useEffect(() => {
-    const scheduler = schedulerRef.current?.instance
-    if (scheduler && !scheduler.isDestroyed) {
-      scheduler.setTimeSpan(timeSpan.startDate, timeSpan.endDate)
-    }
-  }, [timeSpan])
+    return map
+  }, [filteredAppointments])
 
   // ── Navigation ──
   const goToPrev = useCallback(() => {
-    setDate(prev => viewMode === 'day' ? subDays(prev, 1) : subDays(prev, 7))
+    setDate(prev => {
+      if (viewMode === 'day') return subDays(prev, 1)
+      return subWeeks(prev, 1)
+    })
   }, [viewMode])
 
   const goToNext = useCallback(() => {
-    setDate(prev => viewMode === 'day' ? addDays(prev, 1) : addDays(prev, 7))
+    setDate(prev => {
+      if (viewMode === 'day') return addDays(prev, 1)
+      return addWeeks(prev, 1)
+    })
   }, [viewMode])
 
   const goToToday = useCallback(() => {
@@ -224,50 +138,27 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
   }, [])
 
   // ── Event handlers ──
-  const handleScheduleClick = useCallback(({ date: clickedDate, resourceRecord }: { date: Date; resourceRecord: ResourceModel }) => {
-    if (clickedDate) {
-      setSelectedDate(clickedDate)
-      const resId = resourceRecord ? String(resourceRecord.id) : undefined
-      setSelectedBarberId(resId && resId !== NO_BARBER_RESOURCE_ID ? resId : undefined)
-      setIsDialogOpen(true)
-    }
-  }, [])
+  const handleScheduleClick = useCallback((clickedDate: Date) => {
+    setSelectedDate(clickedDate)
+    setSelectedBarberId(selectedBarberFilter !== 'all' ? selectedBarberFilter : undefined)
+    setIsDialogOpen(true)
+  }, [selectedBarberFilter])
 
-  const handleEventClick = useCallback(({ eventRecord }: { eventRecord: EventModel }) => {
-    const aptData = (eventRecord as unknown as Record<string, unknown>).appointmentData as AppointmentWithRelations | undefined
-    if (aptData) {
-      setSelectedEvent(aptData)
+  const handleEventClick = useCallback((event: CalendarEvent) => {
+    const apt = appointmentMap.get(event.id)
+    if (apt) {
+      setSelectedEvent(apt)
       setIsDetailsOpen(true)
     }
-  }, [])
+  }, [appointmentMap])
 
-  const handleEventDrop = useCallback(({ eventRecords }: { eventRecords: EventModel[]; context: object }) => {
-    const eventRecord = eventRecords[0] as unknown as Record<string, unknown>
-    if (!eventRecord) return
-
-    const eventId = eventRecord.id as string
-    const newStartDate = eventRecord.startDate as Date
-    const newResourceId = eventRecord.resourceId as string
-
-    const originalApt = eventRecord.appointmentData as AppointmentWithRelations | undefined
-    const originalBarberId = originalApt?.barber_id || NO_BARBER_RESOURCE_ID
-    const barberChanged = newResourceId !== originalBarberId
-    const newBarberId = newResourceId === NO_BARBER_RESOURCE_ID ? null : newResourceId
-
+  const handleEventDrop = useCallback((eventId: string, newDate: Date) => {
     startTransition(async () => {
-      const result = await updateAppointmentDate(
-        eventId,
-        newStartDate.toISOString(),
-        barberChanged ? (newBarberId ?? undefined) : undefined
-      )
+      const result = await updateAppointmentDate(eventId, newDate.toISOString())
       if (result.error) {
         alert(result.error)
       }
     })
-  }, [])
-
-  const handleBeforeEventEdit = useCallback(() => {
-    return false
   }, [])
 
   const handleOpenChange = (open: boolean) => {
@@ -280,25 +171,6 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
     }
   }
 
-  // ── Event renderer (HTML string — Bryntum requires string, not JSX) ──
-  const eventRenderer = useCallback(({ eventRecord }: { eventRecord: EventModel }) => {
-    const data = eventRecord as unknown as Record<string, unknown>
-    const clientName = escapeHtml((data.clientName as string) || '')
-    const serviceName = escapeHtml((data.serviceName as string) || '')
-    const barberName = escapeHtml((data.barberName as string) || '')
-    const startDate = data.startDate as Date
-    const endDate = data.endDate as Date
-
-    const startTime = format(startDate, 'HH:mm')
-    const endTime = format(endDate, 'HH:mm')
-
-    return `<div class="event-content" style="display:flex;flex-direction:column;height:100%;overflow:hidden;line-height:1.2;padding:2px 4px;color:white;justify-content:center;gap:1px;">
-      <span style="font-size:10px;opacity:0.75;">${startTime}\u2013${endTime}</span>
-      <span style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${clientName}</span>
-      <span style="font-size:10px;opacity:0.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${serviceName}</span>
-    </div>`
-  }, [])
-
   // ── Date label ──
   const dateLabel = useMemo(() => {
     if (viewMode === 'day') {
@@ -307,68 +179,13 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
     return format(date, "MMMM yyyy", { locale: ptBR })
   }, [date, viewMode])
 
-  // ── Renderer for day header in Portuguese ──
-  // Bryntum TS types declare an object param, but runtime may pass positional args
-  const dayHeaderRenderer = useCallback((data: { startDate: Date; endDate: Date; headerConfig: object }) => {
-    const rawStart = data instanceof Date ? data : data.startDate
-    const d = new Date(rawStart)
-    if (isNaN(d.getTime())) return ''
-    const dayName = format(d, 'EEEE', { locale: ptBR }).split('-')[0]
-    return `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} ${format(d, 'dd/MM')}`
-  }, [])
-
-  // ── View preset configuration ──
-  const viewPreset = useMemo(() => {
-    if (viewMode === 'day') {
-      return {
-        base: 'hourAndDay',
-        tickWidth: 120,
-        timeResolution: { unit: 'minute' as const, increment: 30 },
-        shiftIncrement: 1,
-        shiftUnit: 'day' as const,
-        headers: [
-          { unit: 'day' as const, renderer: dayHeaderRenderer },
-          { unit: 'hour' as const, dateFormat: 'HH:mm' },
-          { unit: 'minute' as const, increment: 30, dateFormat: 'mm' },
-        ],
-      }
-    }
-    return {
-      base: 'hourAndDay',
-      tickWidth: 200,
-      timeResolution: { unit: 'minute' as const, increment: 30 },
-      shiftIncrement: 1,
-      shiftUnit: 'day' as const,
-      headers: [
-        { unit: 'day' as const, renderer: dayHeaderRenderer },
-        { unit: 'hour' as const, dateFormat: 'HH:mm' },
-      ],
-    }
-  }, [viewMode, dayHeaderRenderer])
+  const showBarber = selectedBarberFilter === 'all'
 
   return (
     <div className="h-[calc(100vh-200px)] sm:h-[calc(100vh-140px)] min-h-[500px] sm:min-h-[600px] bg-card p-3 sm:p-6 rounded-xl shadow-sm border flex flex-col overflow-hidden">
-      {/* Barber color legend */}
-      {barbers.length > 0 && (
-        <div className="flex items-center gap-3 mb-2 flex-shrink-0 flex-wrap">
-          {barbers.map((barber, index) => {
-            const color = BARBER_COLORS[index % BARBER_COLORS.length]
-            return (
-              <div key={barber.id} className="flex items-center gap-1.5">
-                <span
-                  className="inline-block w-3 h-3 rounded-sm flex-shrink-0"
-                  style={{ backgroundColor: color.bg }}
-                />
-                <span className="text-xs text-muted-foreground">{barber.name}</span>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
       {/* Toolbar */}
-
       <div className="flex flex-col gap-3 mb-4 flex-shrink-0">
+        {/* Row 1: Navigation + Date label */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={goToPrev}>
@@ -402,9 +219,35 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
             </span>
           </div>
         </div>
-        <div className="flex items-center justify-between gap-2">
+
+        {/* Row 2: Barber select + Create button + View toggle */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Barber filter */}
+          <div className="flex-1 min-w-[160px] sm:flex-none sm:w-[200px]">
+            <Select value={selectedBarberFilter} onValueChange={setSelectedBarberFilter}>
+              <SelectTrigger className="h-8 sm:h-9 text-sm">
+                <User className="h-3.5 w-3.5 mr-1.5 shrink-0 text-muted-foreground" />
+                <SelectValue placeholder="Barbeiro" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os barbeiros</SelectItem>
+                {barbers.map((barber, index) => (
+                  <SelectItem key={barber.id} value={barber.id}>
+                    <span className="flex items-center gap-2">
+                      <span
+                        className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: BARBER_COLORS[index % BARBER_COLORS.length].bg }}
+                      />
+                      {barber.name}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Create appointment dialog (controlled) */}
-          <div className="flex-1">
+          <div className="flex-1 sm:flex-none">
             <CreateAppointmentDialog
               services={services}
               clients={clients}
@@ -417,7 +260,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
           </div>
 
           {/* View mode toggle */}
-          <div className="flex bg-muted p-1 rounded-lg shrink-0">
+          <div className="flex bg-muted p-1 rounded-lg shrink-0 ml-auto">
             <button
               onClick={() => setViewMode('day')}
               className={`px-2 sm:px-3 py-1 rounded-md text-sm font-medium transition-colors ${
@@ -434,26 +277,69 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
             >
               Semana
             </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-2 sm:px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'list' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Lista
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Bryntum Scheduler */}
-      <div className="flex-1 min-h-0 overflow-hidden rounded-lg">
-        <SchedulerWrapper
-          schedulerRef={schedulerRef}
-          {...schedulerConfig}
-          resources={resources}
-          events={events}
-          startDate={initialTimeSpan.startDate}
-          endDate={initialTimeSpan.endDate}
-          viewPreset={viewPreset}
-          eventRenderer={eventRenderer}
-          onScheduleClick={handleScheduleClick}
-          onEventClick={handleEventClick}
-          onAfterEventDrop={handleEventDrop}
-          onBeforeEventEdit={handleBeforeEventEdit}
-        />
+      {/* Barber color legend (only when "Todos" is selected and there are barbers) */}
+      {selectedBarberFilter === 'all' && barbers.length > 0 && (
+        <div className="flex items-center gap-3 mb-2 flex-shrink-0 flex-wrap">
+          {barbers.map((barber, index) => {
+            const color = BARBER_COLORS[index % BARBER_COLORS.length]
+            return (
+              <div key={barber.id} className="flex items-center gap-1.5">
+                <span
+                  className="inline-block w-3 h-3 rounded-sm flex-shrink-0"
+                  style={{ backgroundColor: color.bg }}
+                />
+                <span className="text-xs text-muted-foreground">{barber.name}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Calendar Views */}
+      <div className="flex-1 min-h-0 overflow-hidden rounded-lg border border-border bg-card">
+        {viewMode === 'day' && (
+          <DayView
+            date={date}
+            events={events}
+            showBarber={showBarber}
+            onEventClick={handleEventClick}
+            onScheduleClick={handleScheduleClick}
+            onEventDrop={handleEventDrop}
+          />
+        )}
+        {viewMode === 'week' && (
+          <WeekView
+            date={date}
+            events={events}
+            showBarber={showBarber}
+            onEventClick={handleEventClick}
+            onScheduleClick={handleScheduleClick}
+            onEventDrop={handleEventDrop}
+          />
+        )}
+        {viewMode === 'list' && (
+          <div className="h-full overflow-y-auto p-4">
+            <AppointmentList
+              appointments={filteredAppointments}
+              paymentMethods={paymentMethods}
+              products={products}
+              barbers={barbers}
+              weekDate={date}
+            />
+          </div>
+        )}
       </div>
 
       {/* Details dialog */}
