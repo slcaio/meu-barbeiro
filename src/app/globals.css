@@ -160,6 +160,14 @@
   }
 }
 
+/* ─── Recharts: remove focus outline on all elements ─── */
+.recharts-wrapper,
+.recharts-wrapper *,
+.recharts-wrapper svg,
+.recharts-wrapper svg * {
+  outline: none !important;
+}
+
 /* ─── Global scrollbar ─── */
 * {
   scrollbar-width: thin;
