@@ -14,13 +14,15 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
-import { createProduct } from '@/app/stock/actions'
+import { createProduct, uploadProductPhoto } from '@/app/stock/actions'
+import { ProductPhotoUpload } from './product-photo-upload'
 
 export function CreateProductDialog() {
   const [isOpen, setIsOpen] = useState(false)
   const [costPrice, setCostPrice] = useState('')
   const [salePrice, setSalePrice] = useState('')
   const [unit, setUnit] = useState('un')
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
 
   const handleCurrencyChange = (
     setter: (val: string) => void,
@@ -40,10 +42,18 @@ export function CreateProductDialog() {
     const result = await createProduct(formData)
 
     if (result?.success) {
+      // Upload photo if selected (product id returned by createProduct)
+      if (photoFile && result.productId) {
+        const uploadData = new FormData()
+        uploadData.set('product_id', result.productId)
+        uploadData.set('file', photoFile)
+        await uploadProductPhoto(uploadData)
+      }
       setIsOpen(false)
       setCostPrice('')
       setSalePrice('')
       setUnit('un')
+      setPhotoFile(null)
     } else if (result?.error) {
       alert(result.error)
     }
@@ -133,6 +143,8 @@ export function CreateProductDialog() {
               Percentual de comissão pago ao barbeiro na venda deste produto.
             </p>
           </div>
+
+          <ProductPhotoUpload onFileSelect={setPhotoFile} />
 
           <div className="pt-4 flex justify-end space-x-2">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
