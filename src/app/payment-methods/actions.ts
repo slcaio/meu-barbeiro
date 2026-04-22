@@ -209,3 +209,26 @@ export async function deletePaymentMethod(paymentMethodId: string) {
   revalidatePath('/appointments')
   return { success: 'Método de pagamento excluído com sucesso!' }
 }
+
+export async function getPaymentMethodsWithInstallments() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Não autenticado')
+
+  const { data: barbershop } = await supabase
+    .from('barbershops')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (!barbershop) throw new Error('Barbearia não encontrada')
+
+  const { data, error } = await supabase
+    .from('payment_methods')
+    .select('*, payment_method_installments(installment_number, fee_percentage)')
+    .eq('barbershop_id', barbershop.id)
+    .order('name')
+
+  if (error) throw error
+  return data
+}

@@ -1,34 +1,9 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Trash2 } from 'lucide-react'
-import { createService, deleteService } from '@/app/settings/actions'
+import { createService, deleteService, getServices } from '@/app/settings/actions'
 import { SubmitButton } from '@/components/ui/submit-button'
-
-async function getServices() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: barbershop } = await supabase
-    .from('barbershops')
-    .select('id')
-    .eq('user_id', user.id)
-    .single()
-
-  if (!barbershop) redirect('/setup/wizard')
-
-  const { data: services } = await supabase
-    .from('services')
-    .select('*')
-    .eq('barbershop_id', barbershop.id)
-    .order('created_at', { ascending: false })
-
-  return services || []
-}
-
 export default async function ServicesPage() {
   const services = await getServices()
 

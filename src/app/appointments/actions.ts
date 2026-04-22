@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { z } from 'zod'
 
 const appointmentSchema = z.object({
@@ -591,4 +592,66 @@ export async function completeAppointmentWithTransaction(formData: FormData) {
   revalidatePath('/stock')
   
   return { success: 'Operação realizada com sucesso!' }
+}
+
+export async function getAppointmentsPageData() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { data: barbershop } = await supabase
+    .from('barbershops')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (!barbershop) redirect('/setup/wizard')
+
+  const { data: appointments } = await supabase
+    .from('appointments')
+    .select('*, appointment_services(service_id, price_at_time, services(id, name, duration_minutes, price)), barbers(id, name)')
+    .eq('barbershop_id', barbershop.id)
+    .order('appointment_date', { ascending: true })
+
+  const { data: services } = await supabase
+    .from('services')
+    .select('id, name, price, duration_minutes')
+    .eq('barbershop_id', barbershop.id)
+    .eq('is_active', true)
+
+  const { data: clients } = await supabase
+    .from('clients')
+    .select('id, name, phone, email')
+    .eq('barbershop_id', barbershop.id)
+    .order('name')
+
+  const { data: barbers } = await supabase
+    .from('barbers')
+    .select('id, name, is_active')
+    .eq('barbershop_id', barbershop.id)
+    .eq('is_active', true)
+    .order('name')
+
+  const { data: paymentMethods } = await supabase
+    .from('payment_methods')
+    .select('id, name, fee_type, fee_value, supports_installments, payment_method_installments(installment_number, fee_percentage)')
+    .eq('barbershop_id', barbershop.id)
+    .eq('is_active', true)
+    .order('name')
+
+  const { data: products } = await supabase
+    .from('products')
+    .select('id, name, sale_price, current_stock, commission_percentage')
+    .eq('barbershop_id', barbershop.id)
+    .eq('is_active', true)
+    .order('name')
+
+  return {
+    appointments: appointments || [],
+    services: services || [],
+    clients: clients || [],
+    barbers: barbers || [],
+    paymentMethods: paymentMethods || [],
+    products: products || [],
+  }
 }
