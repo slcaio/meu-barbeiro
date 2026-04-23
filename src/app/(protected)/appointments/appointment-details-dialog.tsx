@@ -138,6 +138,12 @@ export function AppointmentDetailsDialog({
                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium mt-1 ${statusColors[appointment.status] || 'bg-muted text-muted-foreground'}`}>
                      {statusLabels[appointment.status] || appointment.status}
                    </span>
+                   {appointment.batch_id && (
+                     <p className="text-sm text-muted-foreground mt-2">
+                       Este atendimento faz parte de um pacote mensal.
+                       {appointment.payment_status === 'paid' ? ' Os serviços já foram quitados antecipadamente.' : ''}
+                     </p>
+                   )}
                 </div>
              </div>
 

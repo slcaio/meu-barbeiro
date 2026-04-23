@@ -19,6 +19,7 @@ describe('Modal', () => {
         <p>Conteúdo do modal</p>
       </Modal>
     )
+    expect(screen.getByRole('dialog', { name: 'Meu Modal' })).toBeInTheDocument()
     expect(screen.getByText('Meu Modal')).toBeInTheDocument()
     expect(screen.getByText('Conteúdo do modal')).toBeInTheDocument()
   })
@@ -51,5 +52,17 @@ describe('Modal', () => {
       </Modal>
     )
     expect(screen.getByRole('button', { name: 'Ação Interna' })).toBeInTheDocument()
+  })
+
+  it('limita a altura e mantém área rolável', () => {
+    render(
+      <Modal isOpen={true} onClose={vi.fn()} title="Longo">
+        <p>Conteúdo</p>
+      </Modal>
+    )
+
+    const dialog = screen.getByRole('dialog', { name: 'Longo' })
+    expect(dialog.className).toContain('max-h-[calc(100vh-6rem)]')
+    expect(dialog.className).toContain('overflow-hidden')
   })
 })

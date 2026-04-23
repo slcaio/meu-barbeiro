@@ -9,6 +9,7 @@ import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CreateAppointmentDialog } from './create-appointment-dialog'
+import { CreateMonthlyAppointmentsDialog } from './create-monthly-appointments-dialog'
 import { AppointmentDetailsDialog } from './appointment-details-dialog'
 import { AppointmentList } from './appointment-list'
 import { DayView } from './day-view'
@@ -268,7 +269,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
           {/* Create button + View toggle: always side by side */}
           <div className="flex items-center gap-2">
             {/* Create appointment dialog (controlled) */}
-            <div className="flex-1 min-w-0 sm:flex-none">
+            <div className="flex-1 min-w-0 sm:flex-none flex items-center gap-2">
               <CreateAppointmentDialog
                 services={services}
                 clients={clients}
@@ -277,6 +278,13 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
                 onOpenChange={handleOpenChange}
                 initialDate={selectedDate}
                 initialBarberId={selectedBarberId}
+              />
+              <CreateMonthlyAppointmentsDialog
+                services={services}
+                clients={clients}
+                barbers={barbers}
+                paymentMethods={paymentMethods}
+                initialBarberId={selectedBarberFilter !== 'all' ? selectedBarberFilter : undefined}
               />
             </div>
 
