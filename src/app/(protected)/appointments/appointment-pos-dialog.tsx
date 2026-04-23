@@ -42,14 +42,17 @@ export function AppointmentPOSDialog({
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<string>('')
   const [selectedInstallments, setSelectedInstallments] = useState<number>(1)
   const [productRows, setProductRows] = useState<ProductRow[]>([])
+  const [cancelScope, setCancelScope] = useState<'single' | 'batch'>('single')
 
   const defaultBarberId = appointment?.barber_id || ''
+  const servicesAlreadyPaid = action === 'complete' && appointment?.payment_status === 'paid'
 
   useEffect(() => {
     if (isOpen && appointment) {
-      setSelectedPaymentMethodId('')
-      setSelectedInstallments(1)
+      setSelectedPaymentMethodId(servicesAlreadyPaid ? (appointment.payment_method_id || '') : '')
+      setSelectedInstallments(servicesAlreadyPaid ? appointment.installments || 1 : 1)
       setProductRows([])
+      setCancelScope('single')
 
       const serviceNames = appointment.appointment_services
         .map(as => as.services?.name)
@@ -65,7 +68,25 @@ export function AppointmentPOSDialog({
         setDescription(`Taxa de cancelamento - Serviços: ${serviceNames} - Cliente: ${appointment.client_name}`)
       }
     }
-  }, [isOpen, appointment, action])
+  }, [isOpen, appointment, action, servicesAlreadyPaid])
+
+  useEffect(() => {
+    if (!isOpen || action !== 'cancel' || !appointment?.batch_id) {
+      return
+    }
+
+    if (cancelScope === 'batch') {
+      setAmount('R$ 0,00')
+      setDescription(`Cancelamento do pacote mensal - Cliente: ${appointment.client_name}`)
+      return
+    }
+
+    const serviceNames = appointment.appointment_services
+      .map(as => as.services?.name)
+      .filter(Boolean)
+      .join(', ')
+    setDescription(`Taxa de cancelamento - Serviços: ${serviceNames} - Cliente: ${appointment.client_name}`)
+  }, [action, appointment, cancelScope, isOpen])
 
   // Product row handlers
   const addProductRow = () => {
@@ -107,17 +128,20 @@ export function AppointmentPOSDialog({
   const servicesAmount = parseCurrency(amount)
   const productsTotal = productRows.reduce((sum, row) => sum + row.quantity * row.price_at_time, 0)
   const grandTotal = servicesAmount + productsTotal
+  const checkoutTotal = servicesAlreadyPaid ? productsTotal : grandTotal
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (action === 'complete' && !selectedPaymentMethodId) {
+    const validProducts = productRows.filter(r => r.product_id && r.quantity > 0)
+    const requiresPaymentMethod = action === 'complete' && (!servicesAlreadyPaid || validProducts.length > 0)
+
+    if (requiresPaymentMethod && !selectedPaymentMethodId) {
       alert('Selecione um método de pagamento.')
       return
     }
 
     // Validate product rows
-    const validProducts = productRows.filter(r => r.product_id && r.quantity > 0)
     for (const row of validProducts) {
       const product = products.find(p => p.id === row.product_id)
       if (product && row.quantity > product.current_stock) {
@@ -134,6 +158,7 @@ export function AppointmentPOSDialog({
       formData.append('action', action)
       formData.append('amount', servicesAmount.toString())
       formData.append('description', description)
+      formData.append('cancel_scope', cancelScope)
 
       if (selectedPaymentMethodId) {
         formData.append('payment_method_id', selectedPaymentMethodId)
@@ -165,18 +190,18 @@ export function AppointmentPOSDialog({
 
   let feeAmount = 0
   let feeLabel = ''
-  if (selectedMethod && grandTotal > 0) {
+  if (selectedMethod && checkoutTotal > 0) {
     if (selectedInstallments > 1 && selectedMethod.supports_installments) {
       const tier = selectedMethod.payment_method_installments.find(
         t => t.installment_number === selectedInstallments
       )
       if (tier) {
-        feeAmount = grandTotal * (tier.fee_percentage / 100)
+        feeAmount = checkoutTotal * (tier.fee_percentage / 100)
         feeLabel = `${selectedMethod.name} ${selectedInstallments}x - ${tier.fee_percentage}%`
       }
     } else {
       if (selectedMethod.fee_type === 'percentage') {
-        feeAmount = grandTotal * (selectedMethod.fee_value / 100)
+        feeAmount = checkoutTotal * (selectedMethod.fee_value / 100)
       } else {
         feeAmount = selectedMethod.fee_value
       }
@@ -190,37 +215,40 @@ export function AppointmentPOSDialog({
 
   // Build installment options
   const installmentOptions: { value: number; label: string; fee: number }[] = []
-  if (selectedMethod?.supports_installments && grandTotal > 0) {
+  if (selectedMethod?.supports_installments && checkoutTotal > 0) {
     const baseFee = selectedMethod.fee_type === 'percentage'
-      ? grandTotal * (selectedMethod.fee_value / 100)
+      ? checkoutTotal * (selectedMethod.fee_value / 100)
       : selectedMethod.fee_value
     installmentOptions.push({
       value: 1,
-      label: `1x de ${fmt(grandTotal)}${baseFee > 0 ? ` (taxa ${selectedMethod.fee_value}%)` : ' (sem taxa)'}`,
+      label: `1x de ${fmt(checkoutTotal)}${baseFee > 0 ? ` (taxa ${selectedMethod.fee_value}%)` : ' (sem taxa)'}`,
       fee: baseFee,
     })
     const sortedTiers = [...selectedMethod.payment_method_installments].sort(
       (a, b) => a.installment_number - b.installment_number
     )
     for (const tier of sortedTiers) {
-      const installmentValue = grandTotal / tier.installment_number
+      const installmentValue = checkoutTotal / tier.installment_number
       installmentOptions.push({
         value: tier.installment_number,
         label: `${tier.installment_number}x de ${fmt(installmentValue)} (taxa ${tier.fee_percentage}%)`,
-        fee: grandTotal * (tier.fee_percentage / 100),
+        fee: checkoutTotal * (tier.fee_percentage / 100),
       })
     }
   }
 
   const title = action === 'complete' ? 'Concluir Agendamento' : 'Cancelar Agendamento'
-  const buttonText = action === 'complete' ? 'Concluir e Receber' : 'Confirmar Cancelamento'
+  const buttonText = action === 'complete'
+    ? (servicesAlreadyPaid ? (productsTotal > 0 ? 'Concluir e Registrar Produtos' : 'Concluir Atendimento') : 'Concluir e Receber')
+    : (cancelScope === 'batch' ? 'Cancelar pacote restante' : 'Confirmar Cancelamento')
   const buttonVariant = action === 'complete' ? 'default' : 'destructive'
+  const showPaymentFields = action === 'complete' && (!servicesAlreadyPaid || productRows.length > 0)
 
   const selectClass = 'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
 
   return (
     <Modal isOpen={isOpen} onClose={() => onOpenChange(false)} title={title}>
-      <form onSubmit={handleSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div className="bg-muted p-3 rounded-md mb-4 text-sm text-foreground/80">
             <p><strong>Cliente:</strong> {appointment?.client_name}</p>
             <p><strong>Serviços:</strong> {appointment?.appointment_services?.map(as => as.services?.name).filter(Boolean).join(', ')}</p>
@@ -231,23 +259,55 @@ export function AppointmentPOSDialog({
             )}
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="amount">Valor dos Serviços</Label>
-          <Input 
-            id="amount" 
-            value={amount}
-            onChange={handleAmountChange}
-            type="text" 
-            inputMode="numeric"
-            placeholder="R$ 0,00"
-            required 
-          />
-          <p className="text-xs text-muted-foreground">
-            {action === 'complete' 
-              ? 'Você pode alterar o valor final dos serviços.' 
-              : 'Se houver taxa de cancelamento, informe o valor acima. Caso contrário, mantenha 0.'}
-          </p>
-        </div>
+        {servicesAlreadyPaid && action === 'complete' && (
+          <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-md text-sm text-emerald-700 dark:text-emerald-400">
+            Os serviços deste atendimento já foram pagos no pacote mensal. Você só precisa concluir o atendimento e, se houver, registrar produtos extras.
+          </div>
+        )}
+
+        {action === 'cancel' && appointment.batch_id && (
+          <div className="space-y-2">
+            <Label htmlFor="cancel_scope">Escopo do cancelamento</Label>
+            <select
+              id="cancel_scope"
+              value={cancelScope}
+              onChange={(event) => setCancelScope(event.target.value as 'single' | 'batch')}
+              className={selectClass}
+            >
+              <option value="single">Cancelar apenas este agendamento</option>
+              <option value="batch">Cancelar este e os próximos do pacote</option>
+            </select>
+            {cancelScope === 'batch' && (
+              <p className="text-xs text-muted-foreground">
+                O cancelamento em lote altera apenas o status dos agendamentos restantes do pacote. Estorno financeiro continua manual.
+              </p>
+            )}
+          </div>
+        )}
+
+        {!(action === 'cancel' && cancelScope === 'batch') && (
+          <div className="space-y-2">
+            <Label htmlFor="amount">{servicesAlreadyPaid ? 'Serviços já pagos' : 'Valor dos Serviços'}</Label>
+            <Input 
+              id="amount" 
+              value={amount}
+              onChange={handleAmountChange}
+              type="text" 
+              inputMode="numeric"
+              placeholder="R$ 0,00"
+              required 
+              readOnly={servicesAlreadyPaid}
+              className={servicesAlreadyPaid ? 'bg-muted' : ''}
+            />
+            <p className="text-xs text-muted-foreground">
+              {servicesAlreadyPaid
+                ? 'Este valor foi quitado no pacote mensal e não será cobrado novamente.'
+                : action === 'complete'
+                  ? 'Você pode alterar o valor final dos serviços.'
+                  : 'Se houver taxa de cancelamento, informe o valor acima. Caso contrário, mantenha 0.'}
+            </p>
+          </div>
+        )}
 
         {/* Products section — only for complete action */}
         {action === 'complete' && products.length > 0 && (
@@ -370,12 +430,16 @@ export function AppointmentPOSDialog({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             required 
+            readOnly={action === 'cancel' && cancelScope === 'batch'}
+            className={action === 'cancel' && cancelScope === 'batch' ? 'bg-muted' : ''}
           />
         </div>
 
-        {action === 'complete' && (
+        {showPaymentFields && (
           <div className="space-y-2">
-            <Label htmlFor="payment_method">Método de Pagamento *</Label>
+            <Label htmlFor="payment_method">
+              {servicesAlreadyPaid ? 'Método de Pagamento dos Itens Cobrados Agora *' : 'Método de Pagamento *'}
+            </Label>
             <select
               id="payment_method"
               value={selectedPaymentMethodId}
@@ -416,19 +480,26 @@ export function AppointmentPOSDialog({
           </div>
         )}
 
-        {action === 'complete' && selectedMethod && feeAmount > 0 && (
+        {showPaymentFields && selectedMethod && feeAmount > 0 && (
           <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-md text-sm text-amber-600 dark:text-amber-400">
             <p><strong>Taxa ({feeLabel}):</strong> {feeFormatted}</p>
           </div>
         )}
 
         {/* Grand total summary */}
-        {action === 'complete' && (productsTotal > 0 || feeAmount > 0) && (
+        {action === 'complete' && (productsTotal > 0 || feeAmount > 0 || servicesAlreadyPaid) && (
           <div className="bg-primary/5 border border-primary/20 p-3 rounded-md text-sm space-y-1">
-            <div className="flex justify-between">
-              <span>Serviços</span>
-              <span>{fmt(servicesAmount)}</span>
-            </div>
+            {servicesAlreadyPaid ? (
+              <div className="flex justify-between text-muted-foreground">
+                <span>Serviços já quitados</span>
+                <span>{fmt(servicesAmount)}</span>
+              </div>
+            ) : (
+              <div className="flex justify-between">
+                <span>Serviços</span>
+                <span>{fmt(servicesAmount)}</span>
+              </div>
+            )}
             {productsTotal > 0 && (
               <div className="flex justify-between">
                 <span>Produtos</span>
@@ -442,8 +513,8 @@ export function AppointmentPOSDialog({
               </div>
             )}
             <div className="flex justify-between font-bold border-t pt-1 mt-1">
-              <span>Total</span>
-              <span>{fmt(grandTotal)}</span>
+              <span>{servicesAlreadyPaid ? 'Total cobrado agora' : 'Total'}</span>
+              <span>{fmt(checkoutTotal)}</span>
             </div>
           </div>
         )}

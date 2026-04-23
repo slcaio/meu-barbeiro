@@ -229,6 +229,7 @@ export interface Database {
           id: string
           barbershop_id: string
           user_id: string
+          batch_id: string | null
           client_id: string | null
           barber_id: string | null
           payment_method_id: string | null
@@ -247,6 +248,7 @@ export interface Database {
           id?: string
           barbershop_id: string
           user_id: string
+          batch_id?: string | null
           client_id?: string | null
           barber_id?: string | null
           payment_method_id?: string | null
@@ -265,6 +267,7 @@ export interface Database {
           id?: string
           barbershop_id?: string
           user_id?: string
+          batch_id?: string | null
           client_id?: string | null
           barber_id?: string | null
           payment_method_id?: string | null

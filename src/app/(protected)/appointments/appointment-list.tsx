@@ -59,6 +59,11 @@ export function AppointmentList({ appointments, paymentMethods = [], products = 
                  apt.status === 'confirmed' ? 'Confirmado' : 
                  apt.status === 'completed' ? 'Concluído' : 'Cancelado'}
               </span>
+              {apt.batch_id && (
+                <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-amber-500/10 text-amber-700 dark:text-amber-400">
+                  Pacote mensal
+                </span>
+              )}
             </div>
             <p className="text-sm text-muted-foreground mt-1">
               {new Date(apt.appointment_date).toLocaleDateString('pt-BR')} às {new Date(apt.appointment_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}

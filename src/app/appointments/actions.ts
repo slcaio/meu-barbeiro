@@ -1,5 +1,6 @@
 'use server'
 
+import { addMonths, addWeeks } from 'date-fns'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
@@ -19,6 +20,133 @@ const appointmentSchema = z.object({
 const updateAppointmentSchema = appointmentSchema.extend({
   id: z.string().uuid('ID do agendamento inválido'),
 })
+
+const monthlyAppointmentSchema = appointmentSchema.extend({
+  payment_method_id: z.string().uuid('Método de pagamento inválido'),
+  installments: z.coerce.number().int().min(1).default(1),
+  package_discount_amount: z.coerce.number().min(0).default(0),
+})
+
+type SupabaseClient = Awaited<ReturnType<typeof createClient>>
+const MAX_MONTHLY_CUTS = 4
+
+function parseServiceIds(serializedServiceIds: string) {
+  try {
+    const serviceIds = JSON.parse(serializedServiceIds)
+
+    if (!Array.isArray(serviceIds) || serviceIds.length === 0) {
+      return { error: 'Selecione ao menos um serviço.' as const }
+    }
+
+    return { data: serviceIds as string[] }
+  } catch {
+    return { error: 'Dados de serviços inválidos.' as const }
+  }
+}
+
+function generateMonthlyAppointmentDates(startIso: string) {
+  const dates: Date[] = []
+  const startDate = new Date(startIso)
+  let currentDate = new Date(startDate)
+  const recurrenceEnd = addMonths(startDate, 1)
+
+  while (currentDate < recurrenceEnd && dates.length < MAX_MONTHLY_CUTS) {
+    dates.push(new Date(currentDate))
+    currentDate = addWeeks(currentDate, 1)
+  }
+
+  return dates
+}
+
+function distributeAmountAcrossAppointments(totalAmount: number, appointmentsCount: number) {
+  if (appointmentsCount <= 0) {
+    return []
+  }
+
+  const totalInCents = Math.round(totalAmount * 100)
+  const baseInCents = Math.floor(totalInCents / appointmentsCount)
+  const remainder = totalInCents % appointmentsCount
+
+  return Array.from({ length: appointmentsCount }, (_, index) => {
+    const cents = baseInCents + (index < remainder ? 1 : 0)
+    return cents / 100
+  })
+}
+
+async function createPaymentFeeRecord({
+  supabase,
+  barbershopId,
+  paymentMethodId,
+  installments,
+  amount,
+  recordDate,
+}: {
+  supabase: SupabaseClient
+  barbershopId: string
+  paymentMethodId: string | null
+  installments: number
+  amount: number
+  recordDate: string
+}) {
+  if (!paymentMethodId || amount <= 0) {
+    return null
+  }
+
+  const { data: paymentMethod } = await supabase
+    .from('payment_methods')
+    .select('name, fee_type, fee_value, supports_installments')
+    .eq('id', paymentMethodId)
+    .single()
+
+  if (!paymentMethod) {
+    return null
+  }
+
+  let feeAmount = 0
+  let feeDescription = ''
+
+  if (installments > 1 && paymentMethod.supports_installments) {
+    const { data: installmentTier } = await supabase
+      .from('payment_method_installments')
+      .select('fee_percentage')
+      .eq('payment_method_id', paymentMethodId)
+      .eq('installment_number', installments)
+      .single()
+
+    if (installmentTier && installmentTier.fee_percentage > 0) {
+      feeAmount = amount * (installmentTier.fee_percentage / 100)
+      feeDescription = `Taxa ${paymentMethod.name} ${installments}x - ${installmentTier.fee_percentage}%`
+    }
+  } else if (paymentMethod.fee_value > 0) {
+    feeAmount = paymentMethod.fee_type === 'percentage'
+      ? amount * (paymentMethod.fee_value / 100)
+      : paymentMethod.fee_value
+    feeDescription = `Taxa ${paymentMethod.name} - ${paymentMethod.fee_type === 'percentage' ? `${paymentMethod.fee_value}%` : `R$ ${paymentMethod.fee_value.toFixed(2)}`}`
+  }
+
+  if (feeAmount <= 0) {
+    return null
+  }
+
+  const { error } = await supabase
+    .from('financial_records')
+    .insert({
+      barbershop_id: barbershopId,
+      type: 'expense',
+      amount: feeAmount,
+      category: 'Taxa de Pagamento',
+      description: feeDescription,
+      payment_method_id: paymentMethodId,
+      record_date: recordDate,
+    })
+
+  if (error) {
+    console.error('Error creating payment fee transaction:', error)
+    return 'Erro ao registrar taxa de pagamento.'
+  }
+
+  return null
+}
 
 export async function createAppointment(formData: FormData) {
   const supabase = await createClient()
@@ -44,15 +172,12 @@ export async function createAppointment(formData: FormData) {
   }
 
   // Parse service_ids JSON array
-  let serviceIds: string[]
-  try {
-    serviceIds = JSON.parse(validation.data.service_ids)
-    if (!Array.isArray(serviceIds) || serviceIds.length === 0) {
-      return { error: 'Selecione ao menos um serviço.' }
-    }
-  } catch {
-    return { error: 'Dados de serviços inválidos.' }
+  const serviceIdsResult = parseServiceIds(validation.data.service_ids)
+  if (serviceIdsResult.error) {
+    return { error: serviceIdsResult.error }
   }
+
+  const serviceIds = serviceIdsResult.data
 
   const { data: barbershop } = await supabase
     .from('barbershops')
@@ -163,15 +288,12 @@ export async function updateAppointment(formData: FormData) {
   }
 
   // Parse service_ids JSON array
-  let serviceIds: string[]
-  try {
-    serviceIds = JSON.parse(validation.data.service_ids)
-    if (!Array.isArray(serviceIds) || serviceIds.length === 0) {
-      return { error: 'Selecione ao menos um serviço.' }
-    }
-  } catch {
-    return { error: 'Dados de serviços inválidos.' }
+  const serviceIdsResult = parseServiceIds(validation.data.service_ids)
+  if (serviceIdsResult.error) {
+    return { error: serviceIdsResult.error }
   }
+
+  const serviceIds = serviceIdsResult.data
 
   const { data: barbershop } = await supabase
     .from('barbershops')
@@ -258,6 +380,177 @@ export async function updateAppointment(formData: FormData) {
   return { success: 'Agendamento atualizado com sucesso!' }
 }
 
+export async function createMonthlyAppointments(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Usuário não autenticado.' }
+
+  const rawData = {
+    client_name: formData.get('client_name'),
+    client_phone: formData.get('client_phone'),
+    client_id: formData.get('client_id'),
+    is_new_client: formData.get('is_new_client'),
+    service_ids: formData.get('service_ids'),
+    barber_id: formData.get('barber_id'),
+    appointment_date: formData.get('appointment_date'),
+    notes: formData.get('notes'),
+    payment_method_id: formData.get('payment_method_id'),
+    installments: formData.get('installments') || '1',
+    package_discount_amount: formData.get('package_discount_amount') || '0',
+  }
+
+  const validation = monthlyAppointmentSchema.safeParse(rawData)
+
+  if (!validation.success) {
+    console.error(validation.error)
+    return { error: 'Dados inválidos. Verifique os campos.' }
+  }
+
+  const serviceIdsResult = parseServiceIds(validation.data.service_ids)
+  if (serviceIdsResult.error) {
+    return { error: serviceIdsResult.error }
+  }
+
+  const serviceIds = serviceIdsResult.data
+
+  const { data: barbershop } = await supabase
+    .from('barbershops')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (!barbershop) return { error: 'Barbearia não encontrada.' }
+
+  let finalClientId = validation.data.client_id
+
+  if (validation.data.is_new_client === 'true') {
+    const { data: newClient, error: createClientError } = await supabase
+      .from('clients')
+      .insert({
+        barbershop_id: barbershop.id,
+        name: validation.data.client_name,
+        phone: validation.data.client_phone || null,
+      })
+      .select('id')
+      .single()
+
+    if (createClientError) {
+      console.error('Error creating new client:', createClientError)
+      return { error: 'Erro ao criar novo cliente.' }
+    }
+
+    finalClientId = newClient.id
+  }
+
+  const { data: services } = await supabase
+    .from('services')
+    .select('id, name, price')
+    .in('id', serviceIds)
+
+  if (!services || services.length === 0) return { error: 'Serviços não encontrados.' }
+
+  const appointmentDates = generateMonthlyAppointmentDates(validation.data.appointment_date)
+  if (appointmentDates.length === 0) {
+    return { error: 'Não foi possível gerar os agendamentos do pacote mensal.' }
+  }
+
+  const serviceTotal = services.reduce((sum, service) => sum + service.price, 0)
+  const grossPackageAmount = serviceTotal * appointmentDates.length
+  const discountAmount = validation.data.package_discount_amount
+
+  if (discountAmount > grossPackageAmount) {
+    return { error: 'O desconto não pode ser maior que o valor total do pacote.' }
+  }
+
+  const discountedPackageAmount = grossPackageAmount - discountAmount
+  const appointmentAmounts = distributeAmountAcrossAppointments(discountedPackageAmount, appointmentDates.length)
+  const batchId = crypto.randomUUID()
+
+  const appointmentRows = appointmentDates.map((appointmentDate, index) => ({
+    batch_id: batchId,
+    barbershop_id: barbershop.id,
+    user_id: user.id,
+    client_id: finalClientId || null,
+    barber_id: validation.data.barber_id || null,
+    payment_method_id: validation.data.payment_method_id,
+    installments: validation.data.installments,
+    client_name: validation.data.client_name,
+    client_phone: validation.data.client_phone || '',
+    appointment_date: appointmentDate.toISOString(),
+    total_amount: appointmentAmounts[index],
+    notes: validation.data.notes || null,
+    status: 'scheduled' as const,
+    payment_status: 'paid' as const,
+  }))
+
+  const { data: insertedAppointments, error: appointmentsError } = await supabase
+    .from('appointments')
+    .insert(appointmentRows)
+    .select('id, appointment_date')
+
+  if (appointmentsError || !insertedAppointments || insertedAppointments.length === 0) {
+    console.error('Error creating monthly appointments:', appointmentsError)
+    return { error: 'Erro ao criar pacote mensal.' }
+  }
+
+  const appointmentServiceRows = insertedAppointments.flatMap((appointment) =>
+    services.map((service) => ({
+      appointment_id: appointment.id,
+      service_id: service.id,
+      price_at_time: service.price,
+    }))
+  )
+
+  const { error: servicesError } = await supabase
+    .from('appointment_services')
+    .insert(appointmentServiceRows)
+
+  if (servicesError) {
+    console.error('Error inserting monthly appointment services:', servicesError)
+    return { error: 'Erro ao vincular serviços ao pacote mensal.' }
+  }
+
+  const serviceNames = services.map((service) => service.name).join(', ')
+  const recordDate = new Date().toISOString().split('T')[0]
+  const discountSuffix = discountAmount > 0 ? ` • Desconto: R$ ${discountAmount.toFixed(2).replace('.', ',')}` : ''
+
+  const { error: incomeError } = await supabase
+    .from('financial_records')
+    .insert({
+      barbershop_id: barbershop.id,
+      type: 'income',
+      amount: discountedPackageAmount,
+      category: 'Serviço',
+      description: `Pacote mensal: ${serviceNames} - Cliente: ${validation.data.client_name} (${insertedAppointments.length} agendamentos)${discountSuffix}`,
+      payment_method_id: validation.data.payment_method_id,
+      record_date: recordDate,
+    })
+
+  if (incomeError) {
+    console.error('Error creating monthly package transaction:', incomeError)
+    return { error: 'Pacote criado, mas erro ao registrar recebimento.' }
+  }
+
+  const feeError = await createPaymentFeeRecord({
+    supabase,
+    barbershopId: barbershop.id,
+    paymentMethodId: validation.data.payment_method_id,
+    installments: validation.data.installments,
+    amount: discountedPackageAmount,
+    recordDate,
+  })
+
+  if (feeError) {
+    return { error: `Pacote criado, mas ${feeError.toLowerCase()}` }
+  }
+
+  revalidatePath('/appointments')
+  revalidatePath('/dashboard')
+  revalidatePath('/financial')
+
+  return { success: `Pacote mensal criado com sucesso! ${insertedAppointments.length} agendamentos foram adicionados.` }
+}
+
 export async function updateAppointmentStatus(id: string, status: 'confirmed' | 'completed' | 'cancelled') {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -314,6 +607,7 @@ export async function completeAppointmentWithTransaction(formData: FormData) {
 
   const appointmentId = formData.get('appointment_id') as string
   const action = formData.get('action') as 'complete' | 'cancel'
+  const cancelScope = formData.get('cancel_scope') === 'batch' ? 'batch' : 'single'
   const amount = Number(formData.get('amount'))
   const description = formData.get('description') as string
   const paymentMethodId = formData.get('payment_method_id') as string | null
@@ -341,8 +635,22 @@ export async function completeAppointmentWithTransaction(formData: FormData) {
   }
 
   const productsTotal = productItems.reduce((sum, p) => sum + p.quantity * p.price_at_time, 0)
-  const servicesAmount = amount // amount from form = services total
+
+  const { data: currentAppointment } = await supabase
+    .from('appointments')
+    .select('barber_id, batch_id, payment_status, payment_method_id, installments, total_amount')
+    .eq('id', appointmentId)
+    .single()
+
+  if (!currentAppointment) {
+    return { error: 'Agendamento não encontrado.' }
+  }
+
+  const servicesAlreadyPaid = action === 'complete' && currentAppointment.payment_status === 'paid'
+  const servicesAmount = servicesAlreadyPaid ? currentAppointment.total_amount : amount
   const grandTotal = servicesAmount + productsTotal
+  const resolvedPaymentMethodId = paymentMethodId || currentAppointment.payment_method_id
+  const resolvedInstallments = paymentMethodId ? installments : currentAppointment.installments || installments
 
   // Determine status
   const status = action === 'complete' ? 'completed' : 'cancelled'
@@ -358,21 +666,24 @@ export async function completeAppointmentWithTransaction(formData: FormData) {
   if (action === 'complete') {
     updateData.total_amount = grandTotal
     updateData.payment_status = 'paid'
-    updateData.installments = installments
-    if (paymentMethodId) {
-      updateData.payment_method_id = paymentMethodId
-    }
-  } else if (action === 'cancel') {
+    updateData.installments = resolvedInstallments
+    updateData.payment_method_id = resolvedPaymentMethodId || null
+  } else if (action === 'cancel' && cancelScope === 'single') {
      if (amount > 0) {
         updateData.total_amount = amount
         updateData.payment_status = 'paid' 
      }
   }
 
-  const { error: updateError } = await supabase
+  const appointmentsUpdate = supabase
     .from('appointments')
     .update(updateData)
-    .eq('id', appointmentId)
+
+  const { error: updateError } = action === 'cancel' && cancelScope === 'batch' && currentAppointment.batch_id
+    ? await appointmentsUpdate
+      .eq('batch_id', currentAppointment.batch_id)
+      .neq('status', 'completed')
+    : await appointmentsUpdate.eq('id', appointmentId)
 
   if (updateError) {
     console.error('Error updating appointment:', updateError)
@@ -390,7 +701,7 @@ export async function completeAppointmentWithTransaction(formData: FormData) {
   const recordDate = new Date().toISOString().split('T')[0]
 
   // --- Service income ---
-  if (servicesAmount > 0) {
+  if (servicesAmount > 0 && (action !== 'complete' || !servicesAlreadyPaid)) {
     const { error: transactionError } = await supabase
       .from('financial_records')
       .insert({
@@ -399,7 +710,7 @@ export async function completeAppointmentWithTransaction(formData: FormData) {
         amount: servicesAmount,
         category: action === 'complete' ? 'Serviço' : 'Outros',
         description: description,
-        payment_method_id: paymentMethodId || null,
+        payment_method_id: resolvedPaymentMethodId || null,
         record_date: recordDate,
       })
 
@@ -461,7 +772,7 @@ export async function completeAppointmentWithTransaction(formData: FormData) {
           category: 'Produto',
           description: `Venda: ${product.name} x${item.quantity}`,
           stock_movement_id: movement?.id || null,
-          payment_method_id: paymentMethodId || null,
+          payment_method_id: resolvedPaymentMethodId || null,
           record_date: recordDate,
         })
         .select('id')
@@ -512,63 +823,29 @@ export async function completeAppointmentWithTransaction(formData: FormData) {
   }
 
   // --- Payment method fee (on grand total) ---
-  if (action === 'complete' && paymentMethodId && grandTotal > 0) {
-    const { data: paymentMethod } = await supabase
-      .from('payment_methods')
-      .select('name, fee_type, fee_value, supports_installments')
-      .eq('id', paymentMethodId)
-      .single()
+  if (action === 'complete') {
+    const feeAmountBase = servicesAlreadyPaid ? productsTotal : grandTotal
+    const feeError = await createPaymentFeeRecord({
+      supabase,
+      barbershopId: barbershop.id,
+      paymentMethodId: resolvedPaymentMethodId,
+      installments: resolvedInstallments,
+      amount: feeAmountBase,
+      recordDate,
+    })
 
-    if (paymentMethod) {
-      let feeAmount = 0
-      let feeDescription = ''
-
-      if (installments > 1 && paymentMethod.supports_installments) {
-        const { data: installmentTier } = await supabase
-          .from('payment_method_installments')
-          .select('fee_percentage')
-          .eq('payment_method_id', paymentMethodId)
-          .eq('installment_number', installments)
-          .single()
-
-        if (installmentTier && installmentTier.fee_percentage > 0) {
-          feeAmount = grandTotal * (installmentTier.fee_percentage / 100)
-          feeDescription = `Taxa ${paymentMethod.name} ${installments}x - ${installmentTier.fee_percentage}%`
-        }
-      } else if (paymentMethod.fee_value > 0) {
-        feeAmount = paymentMethod.fee_type === 'percentage'
-          ? grandTotal * (paymentMethod.fee_value / 100)
-          : paymentMethod.fee_value
-        feeDescription = `Taxa ${paymentMethod.name} - ${paymentMethod.fee_type === 'percentage' ? `${paymentMethod.fee_value}%` : `R$ ${paymentMethod.fee_value.toFixed(2)}`}`
-      }
-
-      if (feeAmount > 0) {
-        await supabase.from('financial_records').insert({
-          barbershop_id: barbershop.id,
-          type: 'expense',
-          amount: feeAmount,
-          category: 'Taxa de Pagamento',
-          description: feeDescription,
-          payment_method_id: paymentMethodId,
-          record_date: recordDate,
-        })
-      }
+    if (feeError) {
+      return { error: feeError }
     }
   }
 
   // --- Barber commission on services ---
   if (action === 'complete' && servicesAmount > 0) {
-    const { data: appointment } = await supabase
-      .from('appointments')
-      .select('barber_id')
-      .eq('id', appointmentId)
-      .single()
-
-    if (appointment?.barber_id) {
+    if (currentAppointment.barber_id) {
       const { data: barber } = await supabase
         .from('barbers')
         .select('commission_percentage, name')
-        .eq('id', appointment.barber_id)
+        .eq('id', currentAppointment.barber_id)
         .single()
 
       if (barber && barber.commission_percentage > 0) {
