@@ -74,7 +74,11 @@ describe('CreateMonthlyAppointmentsDialog', () => {
       />
     )
 
-    await user.click(screen.getByRole('button', { name: /pacote mensal/i }))
+    const trigger = screen.getByRole('button', { name: /pacote mensal/i })
+    expect(trigger.className).toContain('px-2.5')
+    expect(trigger.className).toContain('text-xs')
+
+    await user.click(trigger)
     await user.click(screen.getByRole('button', { name: 'Selecionar cliente' }))
     await user.click(screen.getByRole('button', { name: 'Selecionar serviço' }))
     await user.click(screen.getByRole('button', { name: 'Definir data' }))

@@ -199,8 +199,12 @@ export function CreateMonthlyAppointmentsDialog({
 
   return (
     <>
-      <Button variant="outline" onClick={() => setIsOpen(true)} className="w-full sm:w-auto px-3 sm:px-4">
-        <Layers3 className="mr-2 h-4 w-4" /> Pacote Mensal
+      <Button
+        variant="outline"
+        onClick={() => setIsOpen(true)}
+        className="h-8 w-auto px-2.5 text-xs sm:h-9 sm:px-4 sm:text-sm"
+      >
+        <Layers3 className="mr-1.5 h-3.5 w-3.5 sm:mr-2 sm:h-4 sm:w-4" /> Pacote Mensal
       </Button>
 
       <Modal isOpen={isOpen} onClose={() => handleOpenChange(false)} title="Pacote Mensal de Cortes">

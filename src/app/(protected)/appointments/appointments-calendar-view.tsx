@@ -240,36 +240,53 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
           </div>
         </div>
 
-        {/* Row 2: Barber select + Create button + View toggle */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-          {/* Barber filter */}
-          <div className="w-full sm:flex-none sm:w-[200px]">
-            <Select value={selectedBarberFilter} onValueChange={setSelectedBarberFilter}>
-              <SelectTrigger className="h-8 sm:h-9 text-sm">
-                <User className="h-3.5 w-3.5 mr-1.5 shrink-0 text-muted-foreground" />
-                <SelectValue placeholder="Barbeiro" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os barbeiros</SelectItem>
-                {barbers.map((barber, index) => (
-                  <SelectItem key={barber.id} value={barber.id}>
-                    <span className="flex items-center gap-2">
-                      <span
-                        className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: BARBER_COLORS[index % BARBER_COLORS.length].bg }}
-                      />
-                      {barber.name}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Row 2: Mobile groups the monthly package with the barber filter */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div
+            role="group"
+            aria-label="Filtro de barbeiro e pacote mensal"
+            className="flex items-center gap-1 sm:gap-2"
+          >
+            <div className="min-w-0 flex-1 sm:w-[200px] sm:flex-none">
+              <Select value={selectedBarberFilter} onValueChange={setSelectedBarberFilter}>
+                <SelectTrigger className="h-8 w-full px-2 text-xs sm:h-9 sm:px-3 sm:text-sm">
+                  <User className="h-3.5 w-3.5 mr-1.5 shrink-0 text-muted-foreground" />
+                  <SelectValue placeholder="Barbeiro" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os barbeiros</SelectItem>
+                  {barbers.map((barber, index) => (
+                    <SelectItem key={barber.id} value={barber.id}>
+                      <span className="flex items-center gap-2">
+                        <span
+                          className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: BARBER_COLORS[index % BARBER_COLORS.length].bg }}
+                        />
+                        {barber.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="min-w-0 flex-1 sm:flex-none">
+              <CreateMonthlyAppointmentsDialog
+                services={services}
+                clients={clients}
+                barbers={barbers}
+                paymentMethods={paymentMethods}
+                initialBarberId={selectedBarberFilter !== 'all' ? selectedBarberFilter : undefined}
+              />
+            </div>
           </div>
 
-          {/* Create button + View toggle: always side by side */}
-          <div className="flex items-center gap-2">
-            {/* Create appointment dialog (controlled) */}
-            <div className="flex-1 min-w-0 sm:flex-none flex items-center gap-2">
+          <div
+            role="group"
+            aria-label="Novo agendamento e modo de visualização"
+            className="flex items-center gap-2 sm:ml-auto"
+          >
+            <div className="min-w-0 flex-1 sm:flex-none">
               <CreateAppointmentDialog
                 services={services}
                 clients={clients}
@@ -279,42 +296,34 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
                 initialDate={selectedDate}
                 initialBarberId={selectedBarberId}
               />
-              <CreateMonthlyAppointmentsDialog
-                services={services}
-                clients={clients}
-                barbers={barbers}
-                paymentMethods={paymentMethods}
-                initialBarberId={selectedBarberFilter !== 'all' ? selectedBarberFilter : undefined}
-              />
             </div>
 
-          {/* View mode toggle */}
-          <div className="flex bg-muted p-1 rounded-lg shrink-0">
-            <button
-              onClick={() => setViewMode('day')}
-              className={`px-2 sm:px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'day' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Dia
-            </button>
-            <button
-              onClick={() => setViewMode('week')}
-              className={`px-2 sm:px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'week' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Semana
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`px-2 sm:px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'list' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Lista
-            </button>
-          </div>
+            <div className="flex shrink-0 rounded-lg bg-muted p-1">
+              <button
+                onClick={() => setViewMode('day')}
+                className={`px-2 sm:px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'day' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Dia
+              </button>
+              <button
+                onClick={() => setViewMode('week')}
+                className={`px-2 sm:px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'week' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Semana
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`px-2 sm:px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'list' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Lista
+              </button>
+            </div>
           </div>
         </div>
       </div>
