@@ -264,7 +264,7 @@ function AppointmentFormContent({ services, clients, barbers, initialDate, initi
         <Input id="notes" name="notes" placeholder="Ex: Cliente novo, corte específico..." />
       </div>
 
-      <div className="pt-4 flex justify-end space-x-2">
+      <div className="pt-4 flex flex-wrap justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
         <SubmitButton pendingText="Agendando...">Agendar</SubmitButton>
       </div>

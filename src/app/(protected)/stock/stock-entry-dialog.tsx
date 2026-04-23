@@ -125,7 +125,7 @@ export function StockEntryDialog({ products }: StockEntryDialogProps) {
             A entrada ficará com status &quot;Pendente&quot; até ser liquidada no financeiro.
           </p>
 
-          <div className="pt-4 flex justify-end space-x-2">
+          <div className="pt-4 flex flex-wrap justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)} disabled={isLoading}>
               Cancelar
             </Button>

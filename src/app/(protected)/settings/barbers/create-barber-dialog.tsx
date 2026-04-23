@@ -88,7 +88,7 @@ export function CreateBarberDialog() {
             <Input id="notes" name="notes" placeholder="Observações sobre o barbeiro..." />
           </div>
 
-          <div className="pt-4 flex justify-end space-x-2">
+          <div className="pt-4 flex flex-wrap justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
               Cancelar
             </Button>

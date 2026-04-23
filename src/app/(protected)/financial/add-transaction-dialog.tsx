@@ -159,7 +159,7 @@ export function AddTransactionDialog({ categories: allCategories, isOpen: extern
             <DatePicker value={selectedDate} onChange={setSelectedDate} />
           </div>
 
-          <div className="pt-4 flex justify-end space-x-2">
+          <div className="pt-4 flex flex-wrap justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancelar</Button>
             <SubmitButton variant={type === 'income' ? 'default' : 'destructive'} pendingText="Registrando...">
               {type === 'income' ? 'Registrar Receita' : 'Registrar Despesa'}

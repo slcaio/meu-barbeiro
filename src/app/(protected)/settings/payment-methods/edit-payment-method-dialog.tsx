@@ -174,7 +174,7 @@ export function EditPaymentMethodDialog({ paymentMethod, isOpen, onOpenChange }:
           </span>
         </label>
 
-        <div className="pt-4 flex justify-end space-x-2">
+        <div className="pt-4 flex flex-wrap justify-end gap-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>

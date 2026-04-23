@@ -259,7 +259,7 @@ function EditAppointmentFormContent({ appointment, services, clients, barbers, o
         />
       </div>
 
-      <div className="pt-4 flex justify-end space-x-2">
+      <div className="pt-4 flex flex-wrap justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
         <SubmitButton pendingText="Salvando...">Salvar Alterações</SubmitButton>
       </div>

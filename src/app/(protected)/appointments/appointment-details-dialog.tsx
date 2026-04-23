@@ -154,28 +154,30 @@ export function AppointmentDetailsDialog({
              )}
           </div>
 
-          <div className="pt-4 flex justify-end space-x-3 border-t">
+          <div className="pt-4 flex justify-end gap-2 border-t">
             <Button
               variant="outline"
+              className="flex-1 px-2 gap-1 text-xs sm:text-sm sm:px-4 sm:gap-2"
               onClick={handleEdit}
             >
-              <Pencil className="mr-2 h-4 w-4" />
+              <Pencil className="h-4 w-4 shrink-0" />
               Editar
             </Button>
             <Button
               variant="outline"
-              className="text-red-600 hover:text-red-700 hover:bg-red-500/10 border-red-200 dark:border-red-500/20"
+              className="flex-1 px-2 gap-1 text-xs sm:text-sm sm:px-4 sm:gap-2 text-red-600 hover:text-red-700 hover:bg-red-500/10 border-red-200 dark:border-red-500/20"
               onClick={() => handleStatusChange('cancelled')}
               disabled={appointment.status === 'cancelled'}
             >
-              <X className="mr-2 h-4 w-4" />
+              <X className="h-4 w-4 shrink-0" />
               Cancelar
             </Button>
             <Button
+              className="flex-1 px-2 gap-1 text-xs sm:text-sm sm:px-4 sm:gap-2"
               onClick={() => handleStatusChange('completed')}
               disabled={appointment.status === 'completed'}
             >
-              <Check className="mr-2 h-4 w-4" />
+              <Check className="h-4 w-4 shrink-0" />
               Concluir
             </Button>
           </div>
