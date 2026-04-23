@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useTransition, useMemo } from 'react'
+import { useState, useCallback, useTransition, useMemo, type MouseEvent } from 'react'
 import { format, addDays, subDays, addWeeks, subWeeks } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, CalendarDays, User } from 'lucide-react'
@@ -13,6 +13,7 @@ import { AppointmentDetailsDialog } from './appointment-details-dialog'
 import { AppointmentList } from './appointment-list'
 import { DayView } from './day-view'
 import { WeekView } from './week-view'
+import { EventActionPopover } from './event-action-popover'
 import { updateAppointmentDate } from '@/app/appointments/actions'
 import type { CalendarEvent } from './calendar-event'
 import type { AppointmentWithRelations, ServiceOption, ClientOption, BarberOption, PaymentMethodWithInstallments, ProductOption } from '@/types/database.types'
@@ -50,6 +51,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
   const [selectedEvent, setSelectedEvent] = useState<AppointmentWithRelations | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [selectedBarberId, setSelectedBarberId] = useState<string | undefined>(undefined)
+  const [eventPopover, setEventPopover] = useState<{ apt: AppointmentWithRelations; x: number; y: number } | null>(null)
   const [, startTransition] = useTransition()
 
   // Map barber IDs to colors
@@ -144,11 +146,10 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
     setIsDialogOpen(true)
   }, [selectedBarberFilter])
 
-  const handleEventClick = useCallback((event: CalendarEvent) => {
+  const handleEventClick = useCallback((event: CalendarEvent, mouseEvent: MouseEvent<HTMLElement>) => {
     const apt = appointmentMap.get(event.id)
     if (apt) {
-      setSelectedEvent(apt)
-      setIsDetailsOpen(true)
+      setEventPopover({ apt, x: mouseEvent.clientX, y: mouseEvent.clientY })
     }
   }, [appointmentMap])
 
@@ -171,6 +172,24 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
     }
   }
 
+  const handlePopoverViewDetails = useCallback(() => {
+    if (eventPopover) {
+      setSelectedEvent(eventPopover.apt)
+      setIsDetailsOpen(true)
+      setEventPopover(null)
+    }
+  }, [eventPopover])
+
+  const handlePopoverNewAppointment = useCallback(() => {
+    if (eventPopover) {
+      const aptDate = new Date(eventPopover.apt.appointment_date)
+      setSelectedDate(aptDate)
+      setSelectedBarberId(eventPopover.apt.barber_id ?? undefined)
+      setIsDialogOpen(true)
+      setEventPopover(null)
+    }
+  }, [eventPopover])
+
   // ── Date label ──
   const dateLabel = useMemo(() => {
     if (viewMode === 'day') {
@@ -182,7 +201,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
   const showBarber = selectedBarberFilter === 'all'
 
   return (
-    <div className="h-[calc(100vh-200px)] sm:h-[calc(100vh-140px)] min-h-[500px] sm:min-h-[600px] bg-card p-3 sm:p-6 rounded-xl shadow-sm border flex flex-col overflow-hidden">
+    <div className="isolate h-[calc(100vh-200px)] sm:h-[calc(100vh-140px)] min-h-[500px] sm:min-h-[600px] bg-card p-3 sm:p-6 rounded-xl shadow-sm border flex flex-col overflow-hidden">
       {/* Toolbar */}
       <div className="flex flex-col gap-3 mb-4 flex-shrink-0">
         {/* Row 1: Navigation + Date label */}
@@ -353,6 +372,17 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
         barbers={barbers}
         products={products}
       />
+
+      {/* Event action popover */}
+      {eventPopover && (
+        <EventActionPopover
+          x={eventPopover.x}
+          y={eventPopover.y}
+          onViewDetails={handlePopoverViewDetails}
+          onNewAppointment={handlePopoverNewAppointment}
+          onClose={() => setEventPopover(null)}
+        />
+      )}
     </div>
   )
 }

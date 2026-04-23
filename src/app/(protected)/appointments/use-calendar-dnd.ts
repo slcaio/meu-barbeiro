@@ -35,7 +35,6 @@ export function useCalendarDnd({ getDateForColumn, onDrop }: UseCalendarDndOptio
 
   const handlePointerDown = useCallback((e: React.PointerEvent, event: CalendarEvent) => {
     if (!event.draggable) return
-    e.preventDefault()
     e.stopPropagation()
 
     const el = e.currentTarget as HTMLElement

@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, type MouseEvent } from 'react'
 import { isSameDay } from 'date-fns'
 import { CalendarTimeGrid, HOUR_HEIGHT, START_HOUR, timeToY } from './calendar-time-grid'
 import { CalendarEventBlock, type CalendarEvent } from './calendar-event'
@@ -10,7 +10,7 @@ interface DayViewProps {
   date: Date
   events: CalendarEvent[]
   showBarber: boolean
-  onEventClick: (event: CalendarEvent) => void
+  onEventClick: (event: CalendarEvent, mouseEvent: MouseEvent<HTMLDivElement>) => void
   onScheduleClick: (date: Date) => void
   onEventDrop: (eventId: string, newDate: Date) => void
 }
@@ -137,6 +137,10 @@ export function DayView({ date, events, showBarber, onEventClick, onScheduleClic
                 transition: isDragging ? 'none' : 'top 0.15s ease',
               }}
               onPointerDown={(e) => handlePointerDown(e, evt)}
+              onClick={(e) => {
+                e.stopPropagation()
+                if (!dragState?.active) onEventClick(evt, e)
+              }}
             >
               <CalendarEventBlock
                 event={evt}

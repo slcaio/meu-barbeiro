@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, type MouseEvent } from 'react'
 import { startOfWeek, addDays, isSameDay, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { CalendarTimeGrid, HOUR_HEIGHT, START_HOUR, timeToY } from './calendar-time-grid'
@@ -12,7 +12,7 @@ interface WeekViewProps {
   date: Date
   events: CalendarEvent[]
   showBarber: boolean
-  onEventClick: (event: CalendarEvent) => void
+  onEventClick: (event: CalendarEvent, mouseEvent: MouseEvent<HTMLDivElement>) => void
   onScheduleClick: (date: Date) => void
   onEventDrop: (eventId: string, newDate: Date) => void
 }
@@ -179,6 +179,10 @@ export function WeekView({ date, events, showBarber, onEventClick, onScheduleCli
                     transition: isDragging ? 'none' : 'top 0.15s ease',
                   }}
                   onPointerDown={(e) => handlePointerDown(e, evt)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (!dragState?.active) onEventClick(evt, e)
+                  }}
                 >
                   <CalendarEventBlock
                     event={evt}

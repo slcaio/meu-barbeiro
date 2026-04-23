@@ -1,5 +1,9 @@
 # Meu Barbeiro — Project Guidelines
 
+> **PRIORIDADE ABSOLUTA**
+> 1. **Toda lógica de backend (queries, mutações, auth) vai em `src/app/[module]/actions.ts`** — nunca em `page.tsx` ou componentes.
+> 2. **Todo código novo deve ter testes** — crie ou atualize o arquivo `actions.test.ts` (ou `.test.tsx`) correspondente.
+
 ## Architecture
 
 SaaS de gerenciamento de barbearias. Multi-tenant (cada user tem 1 barbershop).
@@ -32,6 +36,79 @@ npm run lint         # ESLint 9 flat config
 - Formatação: `formatPhone()`, `formatCurrency()`, `parseCurrency()` de `@/lib/utils`
 
 ## Conventions
+
+### ⚠️ Regra de Ouro: Backend sempre em `actions.ts`
+
+**Nunca coloque lógica de backend em `page.tsx` ou componentes.** Toda query ao banco, verificação de auth e lógica de negócio pertence em `src/app/[module]/actions.ts`.
+
+**❌ Errado — query em page.tsx:**
+```typescript
+// src/app/(protected)/appointments/page.tsx
+async function getData() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  // ... queries aqui
+}
+export default async function Page() {
+  const data = await getData()
+}
+```
+
+**✅ Correto — query em actions.ts, page só importa:**
+```typescript
+// src/app/appointments/actions.ts
+export async function getAppointmentsPageData() {
+  const supabase = await createClient()
+  // ... toda a lógica aqui
+  return { appointments, services, clients }
+}
+
+// src/app/(protected)/appointments/page.tsx
+import { getAppointmentsPageData } from '@/app/appointments/actions'
+export default async function Page() {
+  const data = await getAppointmentsPageData()
+}
+```
+
+Funções de leitura (queries) em `actions.ts` seguem o mesmo padrão de auth/barbershop, mas **não precisam de Zod nem `revalidatePath`**:
+
+```typescript
+export async function getModulePageData() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { data: barbershop } = await supabase
+    .from('barbershops').select('id').eq('user_id', user.id).single()
+  if (!barbershop) redirect('/setup/wizard')
+
+  const { data } = await supabase.from('table')...
+  return { data: data || [] }
+}
+```
+
+### ⚠️ Regra de Ouro: Sempre escreva testes
+
+**Todo código novo (action, componente, utilitário) deve ter um teste correspondente.** Crie ou atualize o arquivo `*.test.ts` / `*.test.tsx` no mesmo diretório ou em `src/__tests__/`.
+
+**Estrutura obrigatória de testes para actions:**
+```typescript
+// src/app/[module]/actions.test.ts
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { createMockSupabaseClient } from '@/tests/helpers'
+
+vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
+vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
+vi.mock('next/navigation', () => ({ redirect: vi.fn() }))
+
+describe('myAction', () => {
+  // Ordem obrigatória:
+  it('returns error when user is not authenticated')   // 1. auth error
+  it('returns error when input is invalid')            // 2. validation error
+  it('returns error when barbershop not found')        // 3. business logic error
+  it('returns success with valid data')                // 4. success
+})
+```
 
 ### Server Actions Pattern
 
