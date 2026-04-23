@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition } from 'react'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { DateRange } from 'react-day-picker'
-import { Calendar as CalendarIcon, ChevronDown, ChevronUp, FileText } from 'lucide-react'
+import { Calendar as CalendarIcon, ChevronDown, ChevronUp, FileText, Download } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -105,6 +105,71 @@ export function CommissionReportDialog() {
         setReport(result.data)
       }
     })
+  }
+
+  const handleExportCSV = () => {
+    if (!report) return
+
+    const dateLabel = date?.from && date?.to
+      ? `${format(date.from, 'dd-MM-yyyy', { locale: ptBR })}_${format(date.to, 'dd-MM-yyyy', { locale: ptBR })}`
+      : 'periodo'
+
+    const selectedBarberName = selectedBarber !== 'all'
+      ? barbers.find(b => b.id === selectedBarber)?.name
+      : undefined
+    const barberLabel = selectedBarberName
+      ? `_${selectedBarberName.toLowerCase().replace(/\s+/g, '-')}`
+      : ''
+
+    const rows: string[][] = []
+
+    rows.push(['Relatório de Comissões'])
+    rows.push([`Período: ${date?.from ? format(date.from, 'dd/MM/yyyy', { locale: ptBR }) : ''} a ${date?.to ? format(date.to, 'dd/MM/yyyy', { locale: ptBR }) : ''}`])
+    rows.push([])
+    rows.push(['Barbeiro', 'Data', 'Descrição', 'Tipo', 'Receita (R$)', 'Comissão (R$)'])
+
+    for (const item of report.items) {
+      for (const apt of item.appointments) {
+        rows.push([
+          item.barberName,
+          new Date(apt.date).toLocaleDateString('pt-BR'),
+          apt.description,
+          apt.type === 'service' ? 'Serviço' : 'Produto',
+          apt.amount > 0 ? apt.amount.toFixed(2).replace('.', ',') : '',
+          apt.commission.toFixed(2).replace('.', ','),
+        ])
+      }
+      rows.push([
+        `SUBTOTAL — ${item.barberName}`,
+        '',
+        `${item.totalAppointments} atendimento(s) • ${item.commissionPercentage}%`,
+        '',
+        item.totalRevenue.toFixed(2).replace('.', ','),
+        item.commissionAmount.toFixed(2).replace('.', ','),
+      ])
+      rows.push([])
+    }
+
+    rows.push([
+      'TOTAL GERAL',
+      '',
+      `${report.totals.totalAppointments} atendimento(s)`,
+      '',
+      report.totals.totalRevenue.toFixed(2).replace('.', ','),
+      report.totals.totalCommission.toFixed(2).replace('.', ','),
+    ])
+
+    const csv = rows
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(';'))
+      .join('\n')
+
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `comissoes_${dateLabel}${barberLabel}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   const toggleBarber = (barberId: string) => {
@@ -208,6 +273,15 @@ export function CommissionReportDialog() {
           {/* Results */}
           {report && (
             <div className="space-y-4">
+              {/* Results header with export button */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-muted-foreground">Resultados</span>
+                <Button variant="outline" size="sm" onClick={handleExportCSV}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Exportar CSV
+                </Button>
+              </div>
+
               {/* Summary Cards */}
               <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
                 <Card>
