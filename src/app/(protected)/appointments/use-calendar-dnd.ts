@@ -62,7 +62,7 @@ export function useCalendarDnd({ getDateForColumn, onDrop }: UseCalendarDndOptio
     const rawDelta = (e.clientY + scrollTop) - current.startY
     // Snap to SNAP_MINUTES intervals
     const snappedDelta = Math.round(rawDelta / SNAP_PX) * SNAP_PX
-    const isActive = current.active || Math.abs(rawDelta) > 4
+    const isActive = current.active || Math.abs(rawDelta) > 10
 
     const updated: DragState = { ...current, deltaY: snappedDelta, active: isActive }
     setDragState(updated)
@@ -98,11 +98,25 @@ export function useCalendarDnd({ getDateForColumn, onDrop }: UseCalendarDndOptio
     }
   }, [])
 
+  /**
+   * Returns true if the last pointer interaction was a tap (no drag movement)
+   * on the given event. Must be called during onPointerUp, BEFORE the column's
+   * handlePointerUp clears dragRef.
+   */
+  const isTap = useCallback((eventId: string) => {
+    return (
+      dragRef.current !== null &&
+      dragRef.current.eventId === eventId &&
+      !dragRef.current.active
+    )
+  }, [])
+
   return {
     dragState,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
     handleKeyDown,
+    isTap,
   }
 }

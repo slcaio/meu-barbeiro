@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useTransition, useMemo, type MouseEvent } from 'react'
+import { useState, useCallback, useTransition, useMemo } from 'react'
 import { format, addDays, subDays, addWeeks, subWeeks } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, CalendarDays, User } from 'lucide-react'
@@ -146,10 +146,10 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
     setIsDialogOpen(true)
   }, [selectedBarberFilter])
 
-  const handleEventClick = useCallback((event: CalendarEvent, mouseEvent: MouseEvent<HTMLElement>) => {
+  const handleEventClick = useCallback((event: CalendarEvent, position: { clientX: number; clientY: number }) => {
     const apt = appointmentMap.get(event.id)
     if (apt) {
-      setEventPopover({ apt, x: mouseEvent.clientX, y: mouseEvent.clientY })
+      setEventPopover({ apt, x: position.clientX, y: position.clientY })
     }
   }, [appointmentMap])
 

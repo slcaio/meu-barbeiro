@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, type MouseEvent } from 'react'
+import { memo } from 'react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 
@@ -22,14 +22,12 @@ interface CalendarEventBlockProps {
   event: CalendarEvent
   mode: 'day' | 'week'
   showBarber: boolean
-  onClick: (event: CalendarEvent, mouseEvent: MouseEvent<HTMLDivElement>) => void
 }
 
 export const CalendarEventBlock = memo(function CalendarEventBlock({
   event,
   mode,
   showBarber,
-  onClick,
 }: CalendarEventBlockProps) {
   const isCancelled = event.status === 'cancelled'
   const isCompleted = event.status === 'completed'
@@ -47,7 +45,6 @@ export const CalendarEventBlock = memo(function CalendarEventBlock({
         backgroundColor: event.bgColor,
         borderLeftColor: event.borderColor,
       }}
-      onClick={(e) => e.stopPropagation()}
     >
       {mode === 'day' ? (
         <DayContent event={event} showBarber={showBarber} isCancelled={isCancelled} />
