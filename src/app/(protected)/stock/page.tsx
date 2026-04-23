@@ -1,6 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
-import { getProducts, getPendingEntries } from '@/app/stock/actions'
+import { getStockPageData } from '@/app/stock/actions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Package, AlertTriangle, Clock, DollarSign, TrendingUp } from 'lucide-react'
 import { ProductList } from './product-list'
@@ -11,40 +9,9 @@ import { StockSaleDialog } from './stock-sale-dialog'
 import type { PaymentMethodWithInstallments } from '@/types/database.types'
 
 export default async function StockPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const { products, pendingEntries, paymentMethods, barbers, lowStockCount, totalStockValue, totalSaleValue } = await getStockPageData()
 
-  const { data: barbershop } = await supabase
-    .from('barbershops')
-    .select('id')
-    .eq('user_id', user.id)
-    .single()
-
-  if (!barbershop) redirect('/setup/wizard')
-
-  const products = await getProducts()
-  const pendingEntries = await getPendingEntries()
-
-  const { data: paymentMethods } = await supabase
-    .from('payment_methods')
-    .select('id, name, fee_type, fee_value, supports_installments, payment_method_installments(installment_number, fee_percentage)')
-    .eq('barbershop_id', barbershop.id)
-    .eq('is_active', true)
-    .order('name')
-
-  const typedPaymentMethods = (paymentMethods ?? []) as unknown as PaymentMethodWithInstallments[]
-
-  const { data: barbers } = await supabase
-    .from('barbers')
-    .select('id, name, is_active')
-    .eq('barbershop_id', barbershop.id)
-    .eq('is_active', true)
-    .order('name')
-
-  const lowStockCount = products.filter(p => p.min_stock > 0 && p.current_stock < p.min_stock).length
-  const totalStockValue = products.reduce((sum, p) => sum + (p.average_cost * p.current_stock), 0)
-  const totalSaleValue = products.reduce((sum, p) => sum + (p.sale_price * p.current_stock), 0)
+  const typedPaymentMethods = paymentMethods as unknown as PaymentMethodWithInstallments[]
 
   const formatBRL = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)

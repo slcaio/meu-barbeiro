@@ -1,25 +1,8 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+import { getPaymentMethodsWithInstallments } from '@/app/payment-methods/actions'
 import { PaymentMethodList } from './payment-method-list'
 
 export default async function PaymentMethodsPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: barbershop } = await supabase
-    .from('barbershops')
-    .select('id')
-    .eq('user_id', user.id)
-    .single()
-
-  if (!barbershop) redirect('/setup/wizard')
-
-  const { data: paymentMethods } = await supabase
-    .from('payment_methods')
-    .select('*, payment_method_installments(installment_number, fee_percentage)')
-    .eq('barbershop_id', barbershop.id)
-    .order('name')
+  const paymentMethods = await getPaymentMethodsWithInstallments()
 
   return (
     <div className="space-y-6">

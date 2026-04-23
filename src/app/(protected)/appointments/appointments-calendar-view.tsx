@@ -13,6 +13,7 @@ import { AppointmentDetailsDialog } from './appointment-details-dialog'
 import { AppointmentList } from './appointment-list'
 import { DayView } from './day-view'
 import { WeekView } from './week-view'
+import { EventActionPopover } from './event-action-popover'
 import { updateAppointmentDate } from '@/app/appointments/actions'
 import type { CalendarEvent } from './calendar-event'
 import type { AppointmentWithRelations, ServiceOption, ClientOption, BarberOption, PaymentMethodWithInstallments, ProductOption } from '@/types/database.types'
@@ -50,6 +51,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
   const [selectedEvent, setSelectedEvent] = useState<AppointmentWithRelations | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [selectedBarberId, setSelectedBarberId] = useState<string | undefined>(undefined)
+  const [eventPopover, setEventPopover] = useState<{ apt: AppointmentWithRelations; x: number; y: number } | null>(null)
   const [, startTransition] = useTransition()
 
   // Map barber IDs to colors
@@ -144,11 +146,10 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
     setIsDialogOpen(true)
   }, [selectedBarberFilter])
 
-  const handleEventClick = useCallback((event: CalendarEvent) => {
+  const handleEventClick = useCallback((event: CalendarEvent, position: { clientX: number; clientY: number }) => {
     const apt = appointmentMap.get(event.id)
     if (apt) {
-      setSelectedEvent(apt)
-      setIsDetailsOpen(true)
+      setEventPopover({ apt, x: position.clientX, y: position.clientY })
     }
   }, [appointmentMap])
 
@@ -171,6 +172,24 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
     }
   }
 
+  const handlePopoverViewDetails = useCallback(() => {
+    if (eventPopover) {
+      setSelectedEvent(eventPopover.apt)
+      setIsDetailsOpen(true)
+      setEventPopover(null)
+    }
+  }, [eventPopover])
+
+  const handlePopoverNewAppointment = useCallback(() => {
+    if (eventPopover) {
+      const aptDate = new Date(eventPopover.apt.appointment_date)
+      setSelectedDate(aptDate)
+      setSelectedBarberId(eventPopover.apt.barber_id ?? undefined)
+      setIsDialogOpen(true)
+      setEventPopover(null)
+    }
+  }, [eventPopover])
+
   // ── Date label ──
   const dateLabel = useMemo(() => {
     if (viewMode === 'day') {
@@ -182,7 +201,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
   const showBarber = selectedBarberFilter === 'all'
 
   return (
-    <div className="h-[calc(100vh-200px)] sm:h-[calc(100vh-140px)] min-h-[500px] sm:min-h-[600px] bg-card p-3 sm:p-6 rounded-xl shadow-sm border flex flex-col overflow-hidden">
+    <div className="isolate h-[calc(100vh-200px)] sm:h-[calc(100vh-140px)] min-h-[500px] sm:min-h-[600px] bg-card p-3 sm:p-6 rounded-xl shadow-sm border flex flex-col overflow-hidden">
       {/* Toolbar */}
       <div className="flex flex-col gap-3 mb-4 flex-shrink-0">
         {/* Row 1: Navigation + Date label */}
@@ -203,7 +222,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
                   <CalendarDays className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-auto p-0" align="start" collisionPadding={8}>
                 <Calendar
                   mode="single"
                   selected={date}
@@ -221,9 +240,9 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
         </div>
 
         {/* Row 2: Barber select + Create button + View toggle */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           {/* Barber filter */}
-          <div className="flex-1 min-w-[160px] sm:flex-none sm:w-[200px]">
+          <div className="w-full sm:flex-none sm:w-[200px]">
             <Select value={selectedBarberFilter} onValueChange={setSelectedBarberFilter}>
               <SelectTrigger className="h-8 sm:h-9 text-sm">
                 <User className="h-3.5 w-3.5 mr-1.5 shrink-0 text-muted-foreground" />
@@ -246,21 +265,23 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
             </Select>
           </div>
 
-          {/* Create appointment dialog (controlled) */}
-          <div className="flex-1 sm:flex-none">
-            <CreateAppointmentDialog
-              services={services}
-              clients={clients}
-              barbers={barbers}
-              isOpen={isDialogOpen}
-              onOpenChange={handleOpenChange}
-              initialDate={selectedDate}
-              initialBarberId={selectedBarberId}
-            />
-          </div>
+          {/* Create button + View toggle: always side by side */}
+          <div className="flex items-center gap-2">
+            {/* Create appointment dialog (controlled) */}
+            <div className="flex-1 min-w-0 sm:flex-none">
+              <CreateAppointmentDialog
+                services={services}
+                clients={clients}
+                barbers={barbers}
+                isOpen={isDialogOpen}
+                onOpenChange={handleOpenChange}
+                initialDate={selectedDate}
+                initialBarberId={selectedBarberId}
+              />
+            </div>
 
           {/* View mode toggle */}
-          <div className="flex bg-muted p-1 rounded-lg shrink-0 ml-auto">
+          <div className="flex bg-muted p-1 rounded-lg shrink-0">
             <button
               onClick={() => setViewMode('day')}
               className={`px-2 sm:px-3 py-1 rounded-md text-sm font-medium transition-colors ${
@@ -285,6 +306,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
             >
               Lista
             </button>
+          </div>
           </div>
         </div>
       </div>
@@ -353,6 +375,17 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
         barbers={barbers}
         products={products}
       />
+
+      {/* Event action popover */}
+      {eventPopover && (
+        <EventActionPopover
+          x={eventPopover.x}
+          y={eventPopover.y}
+          onViewDetails={handlePopoverViewDetails}
+          onNewAppointment={handlePopoverNewAppointment}
+          onClose={() => setEventPopover(null)}
+        />
+      )}
     </div>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useRef } from 'react'
 import { startOfWeek, addDays, isSameDay, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { CalendarTimeGrid, HOUR_HEIGHT, START_HOUR, timeToY } from './calendar-time-grid'
@@ -12,7 +12,7 @@ interface WeekViewProps {
   date: Date
   events: CalendarEvent[]
   showBarber: boolean
-  onEventClick: (event: CalendarEvent) => void
+  onEventClick: (event: CalendarEvent, position: { clientX: number; clientY: number }) => void
   onScheduleClick: (date: Date) => void
   onEventDrop: (eventId: string, newDate: Date) => void
 }
@@ -93,12 +93,19 @@ export function WeekView({ date, events, showBarber, onEventClick, onScheduleCli
     return evt?.startDate ?? date
   }, [events, date])
 
-  const { dragState, handlePointerDown, handlePointerMove, handlePointerUp, handleKeyDown } = useCalendarDnd({
+  const { dragState, handlePointerDown, handlePointerMove, handlePointerUp, handleKeyDown, isTap } = useCalendarDnd({
     getDateForColumn,
     onDrop: onEventDrop,
   })
 
+  // Prevents handleClick from firing on mobile after a tap on an appointment
+  const tapHandledRef = useRef(false)
+
   const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>, dayDate: Date) => {
+    if (tapHandledRef.current) {
+      tapHandledRef.current = false
+      return
+    }
     const rect = e.currentTarget.getBoundingClientRect()
     const scrollTop = e.currentTarget.closest('[data-calendar-scroll]')?.scrollTop ?? 0
     const y = e.clientY - rect.top + scrollTop
@@ -178,13 +185,27 @@ export function WeekView({ date, events, showBarber, onEventClick, onScheduleCli
                     opacity: isDragging ? 0.85 : 1,
                     transition: isDragging ? 'none' : 'top 0.15s ease',
                   }}
-                  onPointerDown={(e) => handlePointerDown(e, evt)}
+                  onPointerDown={(e) => {
+                    tapHandledRef.current = false
+                    handlePointerDown(e, evt)
+                  }}
+                  onPointerUp={(e) => {
+                    if (isTap(evt.id)) {
+                      tapHandledRef.current = true
+                      onEventClick(evt, { clientX: e.clientX, clientY: e.clientY })
+                    }
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (!evt.draggable) {
+                      onEventClick(evt, { clientX: e.clientX, clientY: e.clientY })
+                    }
+                  }}
                 >
                   <CalendarEventBlock
                     event={evt}
                     mode="week"
                     showBarber={showBarber}
-                    onClick={onEventClick}
                   />
                 </div>
               )

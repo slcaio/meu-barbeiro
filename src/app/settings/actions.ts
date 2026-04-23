@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { z } from 'zod'
 
 const serviceSchema = z.object({
@@ -73,4 +74,26 @@ export async function deleteService(serviceId: string) {
 
   revalidatePath('/settings/services')
   return { success: 'Serviço excluído com sucesso!' }
+}
+
+export async function getServices() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { data: barbershop } = await supabase
+    .from('barbershops')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (!barbershop) redirect('/setup/wizard')
+
+  const { data: services } = await supabase
+    .from('services')
+    .select('*')
+    .eq('barbershop_id', barbershop.id)
+    .order('created_at', { ascending: false })
+
+  return services || []
 }

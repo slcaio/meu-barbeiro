@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useRef } from 'react'
 import { isSameDay } from 'date-fns'
 import { CalendarTimeGrid, HOUR_HEIGHT, START_HOUR, timeToY } from './calendar-time-grid'
 import { CalendarEventBlock, type CalendarEvent } from './calendar-event'
@@ -10,7 +10,7 @@ interface DayViewProps {
   date: Date
   events: CalendarEvent[]
   showBarber: boolean
-  onEventClick: (event: CalendarEvent) => void
+  onEventClick: (event: CalendarEvent, position: { clientX: number; clientY: number }) => void
   onScheduleClick: (date: Date) => void
   onEventDrop: (eventId: string, newDate: Date) => void
 }
@@ -83,14 +83,21 @@ export function DayView({ date, events, showBarber, onEventClick, onScheduleClic
     return evt?.startDate ?? date
   }, [dayEvents, date])
 
-  const { dragState, handlePointerDown, handlePointerMove, handlePointerUp, handleKeyDown } = useCalendarDnd({
+  const { dragState, handlePointerDown, handlePointerMove, handlePointerUp, handleKeyDown, isTap } = useCalendarDnd({
     getDateForColumn,
     onDrop: onEventDrop,
   })
 
+  // Prevents handleClick from firing on mobile after a tap on an appointment
+  const tapHandledRef = useRef(false)
+
   const laid = useMemo(() => layoutEvents(dayEvents), [dayEvents])
 
   const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (tapHandledRef.current) {
+      tapHandledRef.current = false
+      return
+    }
     const rect = e.currentTarget.getBoundingClientRect()
     const scrollTop = e.currentTarget.closest('[data-calendar-scroll]')?.scrollTop ?? 0
     const y = e.clientY - rect.top + scrollTop
@@ -136,13 +143,31 @@ export function DayView({ date, events, showBarber, onEventClick, onScheduleClic
                 opacity: isDragging ? 0.85 : 1,
                 transition: isDragging ? 'none' : 'top 0.15s ease',
               }}
-              onPointerDown={(e) => handlePointerDown(e, evt)}
+              onPointerDown={(e) => {
+                tapHandledRef.current = false
+                handlePointerDown(e, evt)
+              }}
+              onPointerUp={(e) => {
+                // isTap checks dragRef synchronously — works on mobile where click may not fire
+                if (isTap(evt.id)) {
+                  tapHandledRef.current = true
+                  onEventClick(evt, { clientX: e.clientX, clientY: e.clientY })
+                }
+                // Do NOT stopPropagation — column's handlePointerUp must still run for DnD cleanup
+              }}
+              onClick={(e) => {
+                e.stopPropagation() // always prevent column's handleClick
+                // Non-draggable events have no pointer capture, so click fires normally
+                if (!evt.draggable) {
+                  onEventClick(evt, { clientX: e.clientX, clientY: e.clientY })
+                }
+                // Draggable events: already handled in onPointerUp above
+              }}
             >
               <CalendarEventBlock
                 event={evt}
                 mode="day"
                 showBarber={showBarber}
-                onClick={onEventClick}
               />
             </div>
           )

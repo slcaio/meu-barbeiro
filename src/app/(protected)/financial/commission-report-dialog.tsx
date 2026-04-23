@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition } from 'react'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { DateRange } from 'react-day-picker'
-import { Calendar as CalendarIcon, ChevronDown, ChevronUp, FileText } from 'lucide-react'
+import { Calendar as CalendarIcon, ChevronDown, ChevronUp, FileText, Download, FileDown } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -105,6 +105,271 @@ export function CommissionReportDialog() {
         setReport(result.data)
       }
     })
+  }
+
+  const handleExportCSV = () => {
+    if (!report) return
+
+    const dateLabel = date?.from && date?.to
+      ? `${format(date.from, 'dd-MM-yyyy', { locale: ptBR })}_${format(date.to, 'dd-MM-yyyy', { locale: ptBR })}`
+      : 'periodo'
+
+    const selectedBarberName = selectedBarber !== 'all'
+      ? barbers.find(b => b.id === selectedBarber)?.name
+      : undefined
+    const barberLabel = selectedBarberName
+      ? `_${selectedBarberName.toLowerCase().replace(/\s+/g, '-')}`
+      : ''
+
+    const rows: string[][] = []
+
+    rows.push(['Relatório de Comissões'])
+    rows.push([`Período: ${date?.from ? format(date.from, 'dd/MM/yyyy', { locale: ptBR }) : ''} a ${date?.to ? format(date.to, 'dd/MM/yyyy', { locale: ptBR }) : ''}`])
+    rows.push([])
+    rows.push(['Barbeiro', 'Data', 'Descrição', 'Tipo', 'Receita (R$)', 'Comissão (R$)'])
+
+    for (const item of report.items) {
+      for (const apt of item.appointments) {
+        rows.push([
+          item.barberName,
+          new Date(apt.date).toLocaleDateString('pt-BR'),
+          apt.description,
+          apt.type === 'service' ? 'Serviço' : 'Produto',
+          apt.amount > 0 ? apt.amount.toFixed(2).replace('.', ',') : '',
+          apt.commission.toFixed(2).replace('.', ','),
+        ])
+      }
+      rows.push([
+        `SUBTOTAL — ${item.barberName}`,
+        '',
+        `${item.totalAppointments} atendimento(s) • ${item.commissionPercentage}%`,
+        '',
+        item.totalRevenue.toFixed(2).replace('.', ','),
+        item.commissionAmount.toFixed(2).replace('.', ','),
+      ])
+      rows.push([])
+    }
+
+    rows.push([
+      'TOTAL GERAL',
+      '',
+      `${report.totals.totalAppointments} atendimento(s)`,
+      '',
+      report.totals.totalRevenue.toFixed(2).replace('.', ','),
+      report.totals.totalCommission.toFixed(2).replace('.', ','),
+    ])
+
+    const csv = rows
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(';'))
+      .join('\n')
+
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `comissoes_${dateLabel}${barberLabel}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleExportPDF = async () => {
+    if (!report) return
+
+    const { default: jsPDF } = await import('jspdf')
+    const { default: autoTable } = await import('jspdf-autotable')
+
+    type JsPDFWithAutoTable = InstanceType<typeof jsPDF> & { lastAutoTable: { finalY: number } }
+
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' }) as JsPDFWithAutoTable
+    const pageW = doc.internal.pageSize.getWidth()
+    const margin = 15
+
+    // Color palette
+    const DARK: [number, number, number] = [30, 30, 46]
+    const AMBER: [number, number, number] = [217, 119, 6]
+    const EMERALD: [number, number, number] = [5, 150, 105]
+    const GRAY: [number, number, number] = [107, 114, 128]
+    const LIGHT: [number, number, number] = [249, 250, 251]
+    const WHITE: [number, number, number] = [255, 255, 255]
+
+    const selectedBarberName = selectedBarber !== 'all'
+      ? barbers.find(b => b.id === selectedBarber)?.name
+      : undefined
+    const periodLabel = date?.from && date?.to
+      ? `${format(date.from, 'dd/MM/yyyy', { locale: ptBR })} a ${format(date.to, 'dd/MM/yyyy', { locale: ptBR })}`
+      : ''
+    const barberLabel = selectedBarberName ?? 'Todos os barbeiros'
+
+    // --- HEADER ---
+    doc.setFillColor(...DARK)
+    doc.rect(0, 0, pageW, 38, 'F')
+
+    // Decorative accent bar
+    doc.setFillColor(...AMBER)
+    doc.rect(0, 33, pageW, 5, 'F')
+
+    doc.setTextColor(...WHITE)
+    doc.setFontSize(20)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Relatório de Comissões', margin, 15)
+
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`Período: ${periodLabel}`, margin, 24)
+    doc.text(`Barbeiro: ${barberLabel}`, margin, 30)
+
+    doc.setTextColor(180, 180, 180)
+    doc.setFontSize(7.5)
+    doc.text(`Gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm")}`, pageW - margin, 30, { align: 'right' })
+
+    let y = 50
+
+    // --- SUMMARY CARDS ---
+    const cardW = (pageW - margin * 2 - 8) / 3
+
+    // Card 1: Atendimentos
+    doc.setFillColor(...LIGHT)
+    doc.roundedRect(margin, y, cardW, 22, 2, 2, 'F')
+    doc.setTextColor(...GRAY)
+    doc.setFontSize(7)
+    doc.setFont('helvetica', 'normal')
+    doc.text('ATENDIMENTOS', margin + cardW / 2, y + 7, { align: 'center' })
+    doc.setTextColor(...DARK)
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.text(String(report.totals.totalAppointments), margin + cardW / 2, y + 17, { align: 'center' })
+
+    // Card 2: Receita
+    const c2x = margin + cardW + 4
+    doc.setFillColor(236, 253, 245)
+    doc.roundedRect(c2x, y, cardW, 22, 2, 2, 'F')
+    doc.setTextColor(...GRAY)
+    doc.setFontSize(7)
+    doc.setFont('helvetica', 'normal')
+    doc.text('RECEITA GERADA', c2x + cardW / 2, y + 7, { align: 'center' })
+    doc.setTextColor(...EMERALD)
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'bold')
+    doc.text(formatBRL(report.totals.totalRevenue), c2x + cardW / 2, y + 17, { align: 'center' })
+
+    // Card 3: Comissões
+    const c3x = margin + (cardW + 4) * 2
+    doc.setFillColor(255, 251, 235)
+    doc.roundedRect(c3x, y, cardW, 22, 2, 2, 'F')
+    doc.setTextColor(...GRAY)
+    doc.setFontSize(7)
+    doc.setFont('helvetica', 'normal')
+    doc.text('TOTAL COMISSÕES', c3x + cardW / 2, y + 7, { align: 'center' })
+    doc.setTextColor(...AMBER)
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'bold')
+    doc.text(formatBRL(report.totals.totalCommission), c3x + cardW / 2, y + 17, { align: 'center' })
+
+    y += 32
+
+    // --- PER BARBER SECTIONS ---
+    for (const item of report.items) {
+      if (y > 245) {
+        doc.addPage()
+        y = 15
+      }
+
+      // Barber section header
+      doc.setFillColor(...DARK)
+      doc.roundedRect(margin, y, pageW - margin * 2, 11, 1.5, 1.5, 'F')
+      doc.setTextColor(...WHITE)
+      doc.setFontSize(8.5)
+      doc.setFont('helvetica', 'bold')
+      const initial = item.barberName.charAt(0).toUpperCase()
+      doc.text(initial, margin + 5.5, y + 7.5)
+      doc.setFontSize(8)
+      doc.text(
+        `${item.barberName}  •  ${item.commissionPercentage}% comissão  •  ${item.totalAppointments} atendimento(s)`,
+        margin + 13, y + 7.5
+      )
+      doc.text(
+        `Receita: ${formatBRL(item.totalRevenue)}  |  Comissão: ${formatBRL(item.commissionAmount)}`,
+        pageW - margin - 3, y + 7.5,
+        { align: 'right' }
+      )
+      y += 13
+
+      if (item.appointments.length === 0) {
+        doc.setTextColor(...GRAY)
+        doc.setFontSize(8)
+        doc.setFont('helvetica', 'italic')
+        doc.text('Nenhum atendimento neste período.', margin + 3, y + 4)
+        y += 10
+        continue
+      }
+
+      autoTable(doc, {
+        startY: y,
+        margin: { left: margin, right: margin },
+        head: [['Data', 'Descrição', 'Tipo', 'Receita', 'Comissão']],
+        body: item.appointments.map(apt => [
+          new Date(apt.date).toLocaleDateString('pt-BR'),
+          apt.description,
+          apt.type === 'service' ? 'Serviço' : 'Produto',
+          apt.amount > 0 ? formatBRL(apt.amount) : '—',
+          formatBRL(apt.commission),
+        ]),
+        foot: [[
+          { content: 'Subtotal', colSpan: 3, styles: { halign: 'right' as const, fontStyle: 'bold' as const } },
+          { content: formatBRL(item.totalRevenue), styles: { fontStyle: 'bold' as const, textColor: EMERALD } },
+          { content: formatBRL(item.commissionAmount), styles: { fontStyle: 'bold' as const, textColor: AMBER } },
+        ]],
+        headStyles: { fillColor: [55, 65, 81], textColor: 255, fontSize: 7.5, fontStyle: 'bold' },
+        bodyStyles: { fontSize: 8, textColor: [40, 40, 40] },
+        footStyles: { fontSize: 8, fillColor: [243, 244, 246] },
+        alternateRowStyles: { fillColor: [252, 252, 253] },
+        columnStyles: {
+          0: { cellWidth: 22 },
+          2: { cellWidth: 22, halign: 'center' },
+          3: { cellWidth: 30, halign: 'right' },
+          4: { cellWidth: 30, halign: 'right' },
+        },
+      })
+
+      y = doc.lastAutoTable.finalY + 8
+    }
+
+    // --- TOTAL GERAL ---
+    if (y > 255) { doc.addPage(); y = 15 }
+
+    doc.setFillColor(...AMBER)
+    doc.rect(margin, y, pageW - margin * 2, 12, 'F')
+    doc.setTextColor(...WHITE)
+    doc.setFontSize(8.5)
+    doc.setFont('helvetica', 'bold')
+    doc.text('TOTAL GERAL', margin + 4, y + 8)
+    doc.text(
+      `${report.totals.totalAppointments} atendimentos  |  Receita: ${formatBRL(report.totals.totalRevenue)}  |  Comissões: ${formatBRL(report.totals.totalCommission)}`,
+      pageW - margin - 4, y + 8, { align: 'right' }
+    )
+
+    // --- FOOTER em todas as páginas ---
+    const totalPages = (doc.internal as unknown as { getNumberOfPages: () => number }).getNumberOfPages()
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i)
+      doc.setTextColor(...GRAY)
+      doc.setFontSize(7)
+      doc.setFont('helvetica', 'normal')
+      doc.text(
+        `Página ${i} de ${totalPages}  •  Meu Barbeiro`,
+        pageW / 2, doc.internal.pageSize.getHeight() - 8,
+        { align: 'center' }
+      )
+    }
+
+    const dateLabel = date?.from && date?.to
+      ? `${format(date.from, 'dd-MM-yyyy', { locale: ptBR })}_${format(date.to, 'dd-MM-yyyy', { locale: ptBR })}`
+      : 'periodo'
+    const fileBarberLabel = selectedBarberName
+      ? `_${selectedBarberName.toLowerCase().replace(/\s+/g, '-')}`
+      : ''
+
+    doc.save(`comissoes_${dateLabel}${fileBarberLabel}.pdf`)
   }
 
   const toggleBarber = (barberId: string) => {
@@ -208,6 +473,21 @@ export function CommissionReportDialog() {
           {/* Results */}
           {report && (
             <div className="space-y-4">
+              {/* Results header with export button */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-muted-foreground">Resultados</span>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={handleExportCSV}>
+                    <Download className="mr-2 h-4 w-4" />
+                    CSV
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleExportPDF}>
+                    <FileDown className="mr-2 h-4 w-4" />
+                    PDF
+                  </Button>
+                </div>
+              </div>
+
               {/* Summary Cards */}
               <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
                 <Card>

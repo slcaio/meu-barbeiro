@@ -448,7 +448,7 @@ export function AppointmentPOSDialog({
           </div>
         )}
 
-        <div className="pt-4 flex justify-end space-x-2 border-t mt-4">
+        <div className="pt-4 flex flex-wrap justify-end gap-2 border-t mt-4">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Voltar
           </Button>

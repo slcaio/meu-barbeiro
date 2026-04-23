@@ -22,14 +22,12 @@ interface CalendarEventBlockProps {
   event: CalendarEvent
   mode: 'day' | 'week'
   showBarber: boolean
-  onClick: (event: CalendarEvent) => void
 }
 
 export const CalendarEventBlock = memo(function CalendarEventBlock({
   event,
   mode,
   showBarber,
-  onClick,
 }: CalendarEventBlockProps) {
   const isCancelled = event.status === 'cancelled'
   const isCompleted = event.status === 'completed'
@@ -46,10 +44,6 @@ export const CalendarEventBlock = memo(function CalendarEventBlock({
       style={{
         backgroundColor: event.bgColor,
         borderLeftColor: event.borderColor,
-      }}
-      onClick={(e) => {
-        e.stopPropagation()
-        onClick(event)
       }}
     >
       {mode === 'day' ? (

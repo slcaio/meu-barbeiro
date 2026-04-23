@@ -60,7 +60,7 @@ export function CreateAppointmentDialog({ services, clients, barbers, isOpen: ex
 
   return (
     <>
-      <Button onClick={() => setIsOpen(true)}>
+      <Button onClick={() => setIsOpen(true)} className="w-full sm:w-auto px-3 sm:px-4">
         <Plus className="mr-2 h-4 w-4" /> Novo Agendamento
       </Button>
 
@@ -264,7 +264,7 @@ function AppointmentFormContent({ services, clients, barbers, initialDate, initi
         <Input id="notes" name="notes" placeholder="Ex: Cliente novo, corte específico..." />
       </div>
 
-      <div className="pt-4 flex justify-end space-x-2">
+      <div className="pt-4 flex flex-wrap justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
         <SubmitButton pendingText="Agendando...">Agendar</SubmitButton>
       </div>

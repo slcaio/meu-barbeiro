@@ -133,7 +133,7 @@ export function EditBarberDialog({ barber, isOpen, onOpenChange }: EditBarberDia
           </Label>
         </div>
 
-        <div className="pt-4 flex justify-end space-x-2">
+        <div className="pt-4 flex flex-wrap justify-end gap-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>

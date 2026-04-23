@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { z } from 'zod'
 
 const transactionSchema = z.object({
@@ -294,4 +295,146 @@ export async function deleteTransaction(id: string) {
   revalidatePath('/financial')
   revalidatePath('/dashboard')
   return { success: 'Transação excluída com sucesso!' }
+}
+
+export type SearchParams = {
+  from?: string
+  to?: string
+  type?: string
+  category?: string
+  period?: string
+}
+
+export async function getFinancialPageData(searchParams: SearchParams) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { data: barbershop } = await supabase
+    .from('barbershops')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (!barbershop) redirect('/setup/wizard')
+
+  const { data: dbCategories } = await supabase
+    .from('categories')
+    .select('*')
+    .eq('barbershop_id', barbershop.id)
+    .order('name')
+
+  const { data: usedRecords } = await supabase
+    .from('financial_records')
+    .select('category, type')
+    .eq('barbershop_id', barbershop.id)
+
+  const categorySet = new Set((dbCategories || []).map(c => `${c.name}::${c.type}`))
+  const mergedCategories = [...(dbCategories || [])]
+
+  if (usedRecords) {
+    for (const record of usedRecords) {
+      const key = `${record.category}::${record.type}`
+      if (!categorySet.has(key)) {
+        categorySet.add(key)
+        mergedCategories.push({
+          id: `used-${record.category}-${record.type}`,
+          barbershop_id: barbershop.id,
+          name: record.category,
+          type: record.type as 'income' | 'expense',
+          created_at: '',
+        })
+      }
+    }
+  }
+
+  mergedCategories.sort((a, b) => a.name.localeCompare(b.name))
+
+  const date = new Date()
+  let firstDay = new Date(date.getFullYear(), date.getMonth(), 1).toISOString()
+  let lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString()
+
+  if (searchParams.from && searchParams.to) {
+    firstDay = searchParams.from
+    lastDay = searchParams.to
+  }
+
+  let query = supabase
+    .from('financial_records')
+    .select('*, payment_methods(name)')
+    .eq('barbershop_id', barbershop.id)
+    .gte('record_date', firstDay)
+    .lte('record_date', lastDay)
+    .order('record_date', { ascending: false })
+
+  if (searchParams.type && searchParams.type !== 'all') {
+    if (searchParams.type === 'income' || searchParams.type === 'expense') {
+      query = query.eq('type', searchParams.type)
+    }
+  }
+
+  if (searchParams.category && searchParams.category !== 'all') {
+    query = query.eq('category', searchParams.category)
+  }
+
+  const { data: transactions } = await query
+
+  const totalIncome = transactions
+    ?.filter(t => t.type === 'income')
+    .reduce((sum, t) => sum + t.amount, 0) || 0
+
+  const expenses = transactions
+    ?.filter(t => t.type === 'expense')
+    .reduce((sum, t) => sum + t.amount, 0) || 0
+
+  const netProfit = totalIncome - expenses
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const allTransactions = transactions?.map(t => ({
+    id: t.id,
+    type: t.type,
+    amount: t.amount,
+    description: t.description || 'Sem descrição',
+    category: t.category || 'Outros',
+    date: t.record_date,
+    source: 'manual' as const,
+    paymentMethodName: (t as any).payment_methods?.name || null,
+  })) || []
+
+  const incomeByCategory: Record<string, number> = {}
+  const expenseByCategory: Record<string, number> = {}
+  allTransactions.forEach(t => {
+    if (t.type === 'income') {
+      incomeByCategory[t.category] = (incomeByCategory[t.category] || 0) + t.amount
+    } else {
+      expenseByCategory[t.category] = (expenseByCategory[t.category] || 0) + t.amount
+    }
+  })
+
+  const incomeCategoryData = Object.entries(incomeByCategory).map(([name, value]) => ({ name, value }))
+  const expenseCategoryData = Object.entries(expenseByCategory).map(([name, value]) => ({ name, value }))
+
+  const trendMap: Record<string, { receita: number; despesa: number }> = {}
+  allTransactions.forEach(t => {
+    const day = new Date(t.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+    if (!trendMap[day]) trendMap[day] = { receita: 0, despesa: 0 }
+    if (t.type === 'income') trendMap[day].receita += t.amount
+    else trendMap[day].despesa += t.amount
+  })
+  const trendData = Object.entries(trendMap)
+    .sort(([a], [b]) => {
+      const [dA, mA] = a.split('/').map(Number)
+      const [dB, mB] = b.split('/').map(Number)
+      return mA !== mB ? mA - mB : dA - dB
+    })
+    .map(([name, v]) => ({ name, ...v }))
+
+  return {
+    summary: { totalIncome, expenses, netProfit },
+    transactions: allTransactions,
+    categories: mergedCategories,
+    incomeCategoryData,
+    expenseCategoryData,
+    trendData,
+  }
 }
