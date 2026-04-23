@@ -60,7 +60,7 @@ export function CreateAppointmentDialog({ services, clients, barbers, isOpen: ex
 
   return (
     <>
-      <Button onClick={() => setIsOpen(true)}>
+      <Button onClick={() => setIsOpen(true)} className="w-full sm:w-auto px-3 sm:px-4">
         <Plus className="mr-2 h-4 w-4" /> Novo Agendamento
       </Button>
 

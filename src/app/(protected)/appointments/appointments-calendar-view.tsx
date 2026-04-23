@@ -222,7 +222,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
                   <CalendarDays className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-auto p-0" align="start" collisionPadding={8}>
                 <Calendar
                   mode="single"
                   selected={date}
@@ -240,9 +240,9 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
         </div>
 
         {/* Row 2: Barber select + Create button + View toggle */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           {/* Barber filter */}
-          <div className="flex-1 min-w-[160px] sm:flex-none sm:w-[200px]">
+          <div className="w-full sm:flex-none sm:w-[200px]">
             <Select value={selectedBarberFilter} onValueChange={setSelectedBarberFilter}>
               <SelectTrigger className="h-8 sm:h-9 text-sm">
                 <User className="h-3.5 w-3.5 mr-1.5 shrink-0 text-muted-foreground" />
@@ -265,21 +265,23 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
             </Select>
           </div>
 
-          {/* Create appointment dialog (controlled) */}
-          <div className="flex-1 sm:flex-none">
-            <CreateAppointmentDialog
-              services={services}
-              clients={clients}
-              barbers={barbers}
-              isOpen={isDialogOpen}
-              onOpenChange={handleOpenChange}
-              initialDate={selectedDate}
-              initialBarberId={selectedBarberId}
-            />
-          </div>
+          {/* Create button + View toggle: always side by side */}
+          <div className="flex items-center gap-2">
+            {/* Create appointment dialog (controlled) */}
+            <div className="flex-1 min-w-0 sm:flex-none">
+              <CreateAppointmentDialog
+                services={services}
+                clients={clients}
+                barbers={barbers}
+                isOpen={isDialogOpen}
+                onOpenChange={handleOpenChange}
+                initialDate={selectedDate}
+                initialBarberId={selectedBarberId}
+              />
+            </div>
 
           {/* View mode toggle */}
-          <div className="flex bg-muted p-1 rounded-lg shrink-0 ml-auto">
+          <div className="flex bg-muted p-1 rounded-lg shrink-0">
             <button
               onClick={() => setViewMode('day')}
               className={`px-2 sm:px-3 py-1 rounded-md text-sm font-medium transition-colors ${
@@ -304,6 +306,7 @@ export function AppointmentsCalendarView({ appointments, services, clients, barb
             >
               Lista
             </button>
+          </div>
           </div>
         </div>
       </div>
