@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Meu Barbeiro",
+  title: "Sales Barber",
   description: "Plataforma de gerenciamento de barbearias",
   icons: {
     icon: [

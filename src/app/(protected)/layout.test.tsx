@@ -32,6 +32,10 @@ vi.mock('lucide-react', () => ({
   Scissors: () => <svg data-testid="scissors-icon" />,
   Users: () => <svg data-testid="users-icon" />,
   X: () => <svg data-testid="x-icon" />,
+  Package: () => <svg data-testid="package-icon" />,
+  SidebarIcon: () => <svg data-testid="sidebar-icon" />,
+  ChevronLeft: () => <svg data-testid="chevron-left-icon" />,
+  Loader2: () => <svg data-testid="loader-icon" />,
 }))
 
 describe('Protected Layout', () => {
@@ -49,14 +53,14 @@ describe('Protected Layout', () => {
     expect(screen.getAllByText('Configurações').length).toBeGreaterThan(0)
   })
 
-  it('renderiza logo Meu Barbeiro', async () => {
+  it('renderiza logo Sales Barber', async () => {
     const DashboardLayout = (await import('./layout')).default
     render(
       <DashboardLayout>
         <div>Content</div>
       </DashboardLayout>
     )
-    expect(screen.getAllByText('Meu Barbeiro').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Sales Barber').length).toBeGreaterThan(0)
   })
 
   it('renderiza children', async () => {

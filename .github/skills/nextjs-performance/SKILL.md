@@ -187,7 +187,7 @@ export function Logo() {
   return (
     <Image
       src={logoImg}
-      alt="Meu Barbeiro"
+      alt="Sales Barber"
       placeholder="blur" // blur-up enquanto carrega
       priority // para imagens above-the-fold (LCP)
     />
@@ -727,8 +727,8 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: {
-    template: '%s | Meu Barbeiro',
-    default: 'Meu Barbeiro',
+    template: '%s | Sales Barber',
+    default: 'Sales Barber',
   },
   description: 'Plataforma de gerenciamento de barbearias',
   metadataBase: new URL('https://meubarbeiro.com'),

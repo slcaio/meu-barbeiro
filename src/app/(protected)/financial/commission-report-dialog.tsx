@@ -356,7 +356,7 @@ export function CommissionReportDialog() {
       doc.setFontSize(7)
       doc.setFont('helvetica', 'normal')
       doc.text(
-        `Página ${i} de ${totalPages}  •  Meu Barbeiro`,
+        `Página ${i} de ${totalPages}  •  Sales Barber`,
         pageW / 2, doc.internal.pageSize.getHeight() - 8,
         { align: 'center' }
       )

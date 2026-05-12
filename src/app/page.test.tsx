@@ -22,7 +22,7 @@ describe('Landing Page', () => {
   it('renderiza nome da marca', async () => {
     const LandingPage = (await import('./page')).default
     render(<LandingPage />)
-    expect(screen.getByText('Meu Barbeiro')).toBeInTheDocument()
+    expect(screen.getByText('Sales Barber')).toBeInTheDocument()
   })
 
   it('renderiza link para login', async () => {
@@ -48,7 +48,7 @@ describe('Landing Page', () => {
   it('renderiza footer com copyright', async () => {
     const LandingPage = (await import('./page')).default
     render(<LandingPage />)
-    expect(screen.getByText(/Meu Barbeiro. Todos os direitos reservados/)).toBeInTheDocument()
+    expect(screen.getByText(/Sales Barber. Todos os direitos reservados/)).toBeInTheDocument()
   })
 
   it('links apontam para rotas corretas', async () => {

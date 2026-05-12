@@ -10,7 +10,7 @@ export default function LandingPage() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <Scissors className="h-4 w-4 text-primary-foreground" />
           </div>
-          <span className="text-lg font-bold">Meu Barbeiro</span>
+          <span className="text-lg font-bold">Sales Barber</span>
         </div>
         <div className="flex gap-3">
           <Link href="/login">
@@ -69,7 +69,7 @@ export default function LandingPage() {
       </main>
       
       <footer className="border-t py-6 text-center text-sm text-muted-foreground">
-        &copy; {new Date().getFullYear()} Meu Barbeiro. Todos os direitos reservados.
+        &copy; {new Date().getFullYear()} Sales Barber. Todos os direitos reservados.
       </footer>
     </div>
   )

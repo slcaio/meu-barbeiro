@@ -438,7 +438,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 
 # Application
 NEXT_PUBLIC_APP_URL=
-NEXT_PUBLIC_APP_NAME="Meu Barbeiro"
+NEXT_PUBLIC_APP_NAME="Sales Barber"
 JWT_SECRET=
 
 # Email Service

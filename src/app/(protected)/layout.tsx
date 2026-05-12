@@ -76,7 +76,7 @@ export default function DashboardLayout({
             <Scissors className="h-5 w-5 text-primary-foreground" />
           </div>
           <Link href="/dashboard" className="flex items-center">
-            <span className="text-lg font-bold text-sidebar-foreground">Meu Barbeiro</span>
+            <span className="text-lg font-bold text-sidebar-foreground">Sales Barber</span>
           </Link>
           {/* Mobile close button */}
           <button
@@ -179,7 +179,7 @@ export default function DashboardLayout({
           {/* Brand: mobile always, desktop only when sidebar collapsed */}
           <div className={cn("flex items-center gap-2", desktopCollapsed ? "flex" : "md:hidden")}>
             <Scissors className="h-5 w-5 text-primary" />
-            <span className="text-base font-semibold text-foreground">Meu Barbeiro</span>
+            <span className="text-base font-semibold text-foreground">Sales Barber</span>
           </div>
         </header>
 

@@ -1,4 +1,4 @@
-# Meu Barbeiro — Project Guidelines
+# Sales Barber — Project Guidelines
 
 > **PRIORIDADE ABSOLUTA**
 > 1. **Toda lógica de backend (queries, mutações, auth) vai em `src/app/[module]/actions.ts`** — nunca em `page.tsx` ou componentes.
