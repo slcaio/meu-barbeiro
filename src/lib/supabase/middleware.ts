@@ -40,7 +40,32 @@ export const updateSession = async (request: NextRequest) => {
   if (!claimsError) {
     user = data?.claims
   } else {
-    const { data: { user: serverUser } } = await supabase.auth.getUser()
+    const { data: { user: serverUser }, error: userError } = await supabase.auth.getUser()
+
+    // JWT expired or invalid — clear auth cookies and force re-login
+    if (userError) {
+      const isPublicRoute =
+        request.nextUrl.pathname.startsWith('/login') ||
+        request.nextUrl.pathname.startsWith('/register') ||
+        request.nextUrl.pathname.startsWith('/auth') ||
+        request.nextUrl.pathname.startsWith('/recovery')
+
+      const redirectUrl = request.nextUrl.clone()
+      redirectUrl.pathname = '/login'
+      const response = isPublicRoute
+        ? NextResponse.next({ request })
+        : NextResponse.redirect(redirectUrl)
+
+      // Delete all Supabase auth cookies so the browser stops sending the expired token
+      request.cookies.getAll().forEach(({ name }) => {
+        if (name.startsWith('sb-')) {
+          response.cookies.delete(name)
+        }
+      })
+
+      return response
+    }
+
     user = serverUser
   }
 
