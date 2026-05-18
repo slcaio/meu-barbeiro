@@ -516,6 +516,7 @@ export interface Database {
           category: string
           payment_method_id: string | null
           stock_movement_id: string | null
+          is_cogs: boolean
           record_date: string
           created_at: string
         }
@@ -528,6 +529,7 @@ export interface Database {
           category?: string
           payment_method_id?: string | null
           stock_movement_id?: string | null
+          is_cogs?: boolean
           record_date?: string
           created_at?: string
         }
@@ -540,6 +542,7 @@ export interface Database {
           category?: string
           payment_method_id?: string | null
           stock_movement_id?: string | null
+          is_cogs?: boolean
           record_date?: string
           created_at?: string
         }

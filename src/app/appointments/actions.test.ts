@@ -6,11 +6,13 @@ vi.mock('next/cache', () => ({
 }))
 
 const mockFrom = vi.fn()
+const mockRpc = vi.fn().mockResolvedValue({ data: null, error: null })
 const mockSupabase = {
   auth: {
     getUser: vi.fn(),
   },
   from: mockFrom,
+  rpc: mockRpc,
 }
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -854,6 +856,182 @@ describe('Appointments Actions', () => {
         description: 'Comissão Carlos - Serviços 30%',
         record_date: expect.any(String),
       })
+    })
+
+    it('registra venda de produto com CMV (is_cogs) e unit_cost igual ao average_cost', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: { id: 'user-123' } },
+      })
+
+      const appointmentLookupChain = mockChain({
+        barber_id: null,
+        batch_id: null,
+        payment_status: 'pending',
+        payment_method_id: null,
+        installments: 1,
+        total_amount: 0,
+      })
+      const updateChain = {
+        update: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }
+      const barbershopChain = mockChain({ id: 'barbershop-1' })
+      const productChain = mockChain({
+        id: 'prod-1',
+        name: 'Pomada',
+        current_stock: 10,
+        commission_percentage: 0,
+        average_cost: 12,
+      })
+      const stockMovementsChain = {
+        insert: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: { id: 'mv-1' } }),
+        update: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }
+      const financialRecordsChain = {
+        insert: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: { id: 'rec-1' } }),
+      }
+      const appointmentProductsChain = {
+        insert: vi.fn().mockResolvedValue({ error: null }),
+      }
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'appointments') {
+          if (appointmentLookupChain.single.mock.calls.length === 0) return appointmentLookupChain
+          return updateChain
+        }
+        if (table === 'barbershops') return barbershopChain
+        if (table === 'products') return productChain
+        if (table === 'stock_movements') return stockMovementsChain
+        if (table === 'financial_records') return financialRecordsChain
+        if (table === 'appointment_products') return appointmentProductsChain
+        return mockChain()
+      })
+
+      const { completeAppointmentWithTransaction } = await import('./actions')
+      const formData = createFormData({
+        appointment_id: 'apt-1',
+        action: 'complete',
+        amount: '0',
+        description: '',
+        products_json: JSON.stringify([
+          { product_id: 'prod-1', quantity: 2, price_at_time: 50 },
+        ]),
+      })
+      const result = await completeAppointmentWithTransaction(formData)
+      expect(result).toEqual({ success: 'Operação realizada com sucesso!' })
+
+      // stock_movement unit_cost reflects COGS (12), not the sale price (50)
+      expect(stockMovementsChain.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          unit_cost: 12,
+          total_cost: 24,
+          quantity: 2,
+        }),
+      )
+
+      // 2 financial_records inserts: income + CMV (no commission)
+      expect(financialRecordsChain.insert).toHaveBeenCalledTimes(2)
+
+      // Income record
+      expect(financialRecordsChain.insert).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          type: 'income',
+          amount: 100,
+          category: 'Produto',
+        }),
+      )
+
+      // CMV record
+      expect(financialRecordsChain.insert).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          type: 'expense',
+          amount: 24,
+          category: 'Custo de Produto',
+          is_cogs: true,
+          stock_movement_id: 'mv-1',
+        }),
+      )
+    })
+
+    it('não cria registro de CMV quando average_cost é 0', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: { id: 'user-123' } },
+      })
+
+      const appointmentLookupChain = mockChain({
+        barber_id: null,
+        batch_id: null,
+        payment_status: 'pending',
+        payment_method_id: null,
+        installments: 1,
+        total_amount: 0,
+      })
+      const updateChain = {
+        update: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }
+      const barbershopChain = mockChain({ id: 'barbershop-1' })
+      const productChain = mockChain({
+        id: 'prod-1',
+        name: 'Pomada',
+        current_stock: 10,
+        commission_percentage: 0,
+        average_cost: 0,
+      })
+      const stockMovementsChain = {
+        insert: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: { id: 'mv-1' } }),
+        update: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }
+      const financialRecordsChain = {
+        insert: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: { id: 'rec-1' } }),
+      }
+      const appointmentProductsChain = {
+        insert: vi.fn().mockResolvedValue({ error: null }),
+      }
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'appointments') {
+          if (appointmentLookupChain.single.mock.calls.length === 0) return appointmentLookupChain
+          return updateChain
+        }
+        if (table === 'barbershops') return barbershopChain
+        if (table === 'products') return productChain
+        if (table === 'stock_movements') return stockMovementsChain
+        if (table === 'financial_records') return financialRecordsChain
+        if (table === 'appointment_products') return appointmentProductsChain
+        return mockChain()
+      })
+
+      const { completeAppointmentWithTransaction } = await import('./actions')
+      const formData = createFormData({
+        appointment_id: 'apt-1',
+        action: 'complete',
+        amount: '0',
+        description: '',
+        products_json: JSON.stringify([
+          { product_id: 'prod-1', quantity: 1, price_at_time: 30 },
+        ]),
+      })
+      const result = await completeAppointmentWithTransaction(formData)
+      expect(result).toEqual({ success: 'Operação realizada com sucesso!' })
+
+      // Only income record — no CMV when cost is 0
+      expect(financialRecordsChain.insert).toHaveBeenCalledTimes(1)
+      expect(financialRecordsChain.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'income', amount: 30 }),
+      )
     })
   })
 })

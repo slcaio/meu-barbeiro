@@ -42,6 +42,8 @@ function createTransactions(count: number) {
     date: '2026-04-01',
     source: 'manual' as const,
     paymentMethodName: null,
+    isCogs: false,
+    stockMovementId: null,
   }))
 }
 
@@ -49,7 +51,7 @@ describe('TransactionSection', () => {
   async function renderComponent(transactionCount = 5) {
     const { TransactionSection } = await import('./transaction-section')
     const transactions = createTransactions(transactionCount)
-    const result = render(<TransactionSection transactions={transactions} />)
+    const result = render(<TransactionSection transactions={transactions} categories={[]} />)
     return { ...result, transactions }
   }
 
@@ -171,10 +173,10 @@ describe('TransactionSection', () => {
   it('cards refletem os totais das transações sem busca', async () => {
     const { TransactionSection } = await import('./transaction-section')
     const transactions = [
-      { id: 'a', type: 'income' as const, amount: 200, description: 'Receita A', category: 'Outros', date: '2026-04-01', source: 'manual' as const, paymentMethodName: null },
-      { id: 'b', type: 'expense' as const, amount: 80, description: 'Despesa B', category: 'Outros', date: '2026-04-01', source: 'manual' as const, paymentMethodName: null },
+      { id: 'a', type: 'income' as const, amount: 200, description: 'Receita A', category: 'Outros', date: '2026-04-01', source: 'manual' as const, paymentMethodName: null, isCogs: false, stockMovementId: null },
+      { id: 'b', type: 'expense' as const, amount: 80, description: 'Despesa B', category: 'Outros', date: '2026-04-01', source: 'manual' as const, paymentMethodName: null, isCogs: false, stockMovementId: null },
     ]
-    render(<TransactionSection transactions={transactions} />)
+    render(<TransactionSection transactions={transactions} categories={[]} />)
 
     expect(screen.getByTestId('statement-report-dialog')).toHaveAttribute('data-income', '200')
     expect(screen.getByTestId('statement-report-dialog')).toHaveAttribute('data-expenses', '80')
@@ -185,11 +187,11 @@ describe('TransactionSection', () => {
     const user = userEvent.setup()
     const { TransactionSection } = await import('./transaction-section')
     const transactions = [
-      { id: 'a', type: 'income' as const, amount: 200, description: 'Corte simples', category: 'Outros', date: '2026-04-01', source: 'manual' as const, paymentMethodName: null },
-      { id: 'b', type: 'expense' as const, amount: 80, description: 'Produto X', category: 'Outros', date: '2026-04-01', source: 'manual' as const, paymentMethodName: null },
-      { id: 'c', type: 'income' as const, amount: 150, description: 'Corte degradê', category: 'Outros', date: '2026-04-01', source: 'manual' as const, paymentMethodName: null },
+      { id: 'a', type: 'income' as const, amount: 200, description: 'Corte simples', category: 'Outros', date: '2026-04-01', source: 'manual' as const, paymentMethodName: null, isCogs: false, stockMovementId: null },
+      { id: 'b', type: 'expense' as const, amount: 80, description: 'Produto X', category: 'Outros', date: '2026-04-01', source: 'manual' as const, paymentMethodName: null, isCogs: false, stockMovementId: null },
+      { id: 'c', type: 'income' as const, amount: 150, description: 'Corte degradê', category: 'Outros', date: '2026-04-01', source: 'manual' as const, paymentMethodName: null, isCogs: false, stockMovementId: null },
     ]
-    render(<TransactionSection transactions={transactions} />)
+    render(<TransactionSection transactions={transactions} categories={[]} />)
 
     await user.type(screen.getByPlaceholderText('Buscar por descrição...'), 'corte')
 

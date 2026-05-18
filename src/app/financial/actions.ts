@@ -282,6 +282,19 @@ export async function deleteTransaction(id: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Usuário não autenticado.' }
 
+  // Block deleting records linked to stock movements or COGS — these come from
+  // appointments/sales and must be reversed by the originating flow.
+  const { data: existing } = await supabase
+    .from('financial_records')
+    .select('id, stock_movement_id, is_cogs')
+    .eq('id', id)
+    .single()
+
+  if (!existing) return { error: 'Transação não encontrada.' }
+  if (existing.stock_movement_id || existing.is_cogs) {
+    return { error: 'Transações vinculadas a vendas ou custo de produto não podem ser excluídas aqui.' }
+  }
+
   const { error } = await supabase
     .from('financial_records')
     .delete()
@@ -295,6 +308,76 @@ export async function deleteTransaction(id: string) {
   revalidatePath('/financial')
   revalidatePath('/dashboard')
   return { success: 'Transação excluída com sucesso!' }
+}
+
+const updateTransactionSchema = z.object({
+  id: z.string().uuid('ID inválido.'),
+  type: z.enum(['income', 'expense']),
+  amount: z.coerce.number().min(0.01, 'Valor deve ser positivo'),
+  category: z.string().min(1, 'Categoria é obrigatória'),
+  description: z.string().optional(),
+  record_date: z.string().date(),
+})
+
+export async function updateTransaction(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Usuário não autenticado.' }
+
+  const parsed = updateTransactionSchema.safeParse({
+    id: formData.get('id'),
+    type: formData.get('type'),
+    amount: formData.get('amount'),
+    category: formData.get('category'),
+    description: formData.get('description'),
+    record_date: formData.get('record_date'),
+  })
+
+  if (!parsed.success) {
+    return { error: 'Dados inválidos. Verifique os campos.' }
+  }
+
+  const { data: barbershop } = await supabase
+    .from('barbershops')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (!barbershop) return { error: 'Barbearia não encontrada.' }
+
+  // Block editing records originated from sales or COGS.
+  const { data: existing } = await supabase
+    .from('financial_records')
+    .select('id, stock_movement_id, is_cogs, barbershop_id')
+    .eq('id', parsed.data.id)
+    .single()
+
+  if (!existing || existing.barbershop_id !== barbershop.id) {
+    return { error: 'Transação não encontrada.' }
+  }
+  if (existing.stock_movement_id || existing.is_cogs) {
+    return { error: 'Transações vinculadas a vendas ou custo de produto não podem ser editadas.' }
+  }
+
+  const { error } = await supabase
+    .from('financial_records')
+    .update({
+      type: parsed.data.type,
+      amount: parsed.data.amount,
+      category: parsed.data.category,
+      description: parsed.data.description || null,
+      record_date: parsed.data.record_date,
+    })
+    .eq('id', parsed.data.id)
+
+  if (error) {
+    console.error('Error updating transaction:', error)
+    return { error: 'Erro ao atualizar transação.' }
+  }
+
+  revalidatePath('/financial')
+  revalidatePath('/dashboard')
+  return { success: 'Transação atualizada com sucesso!' }
 }
 
 export type SearchParams = {
@@ -383,11 +466,16 @@ export async function getFinancialPageData(searchParams: SearchParams) {
     ?.filter(t => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0) || 0
 
+  // Regular expenses exclude COGS (CMV) — it has its own KPI.
   const expenses = transactions
-    ?.filter(t => t.type === 'expense')
+    ?.filter(t => t.type === 'expense' && !t.is_cogs)
     .reduce((sum, t) => sum + t.amount, 0) || 0
 
-  const netProfit = totalIncome - expenses
+  const cogs = transactions
+    ?.filter(t => t.type === 'expense' && t.is_cogs)
+    .reduce((sum, t) => sum + t.amount, 0) || 0
+
+  const netProfit = totalIncome - expenses - cogs
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const allTransactions = transactions?.map(t => ({
@@ -399,6 +487,8 @@ export async function getFinancialPageData(searchParams: SearchParams) {
     date: t.record_date,
     source: 'manual' as const,
     paymentMethodName: (t as any).payment_methods?.name || null,
+    isCogs: t.is_cogs === true,
+    stockMovementId: t.stock_movement_id,
   })) || []
 
   const incomeByCategory: Record<string, number> = {}
@@ -406,7 +496,8 @@ export async function getFinancialPageData(searchParams: SearchParams) {
   allTransactions.forEach(t => {
     if (t.type === 'income') {
       incomeByCategory[t.category] = (incomeByCategory[t.category] || 0) + t.amount
-    } else {
+    } else if (!t.isCogs) {
+      // COGS is excluded from the expense breakdown chart.
       expenseByCategory[t.category] = (expenseByCategory[t.category] || 0) + t.amount
     }
   })
@@ -430,7 +521,7 @@ export async function getFinancialPageData(searchParams: SearchParams) {
     .map(([name, v]) => ({ name, ...v }))
 
   return {
-    summary: { totalIncome, expenses, netProfit },
+    summary: { totalIncome, expenses, cogs, netProfit },
     transactions: allTransactions,
     categories: mergedCategories,
     incomeCategoryData,

@@ -726,7 +726,7 @@ export async function completeAppointmentWithTransaction(formData: FormData) {
       // Validate stock
       const { data: product } = await supabase
         .from('products')
-        .select('id, name, current_stock, commission_percentage')
+        .select('id, name, current_stock, commission_percentage, average_cost')
         .eq('id', item.product_id)
         .eq('barbershop_id', barbershop.id)
         .single()
@@ -737,8 +737,10 @@ export async function completeAppointmentWithTransaction(formData: FormData) {
       }
 
       const itemTotal = item.quantity * item.price_at_time
+      const unitCost = product.average_cost || 0
+      const cogsTotal = item.quantity * unitCost
 
-      // Create stock movement (exit)
+      // Create stock movement (exit) — unit_cost reflects COGS, not the sale price.
       const { data: movement } = await supabase
         .from('stock_movements')
         .insert({
@@ -746,8 +748,8 @@ export async function completeAppointmentWithTransaction(formData: FormData) {
           barbershop_id: barbershop.id,
           type: 'exit',
           quantity: item.quantity,
-          unit_cost: item.price_at_time,
-          total_cost: itemTotal,
+          unit_cost: unitCost,
+          total_cost: cogsTotal,
           source: 'sale',
           financial_status: 'none',
           barber_id: item.barber_id || null,
@@ -784,6 +786,20 @@ export async function completeAppointmentWithTransaction(formData: FormData) {
           .from('stock_movements')
           .update({ reference_id: record.id })
           .eq('id', movement.id)
+      }
+
+      // Cost of Goods Sold (CMV) — separated from regular expenses via is_cogs flag.
+      if (cogsTotal > 0) {
+        await supabase.from('financial_records').insert({
+          barbershop_id: barbershop.id,
+          type: 'expense',
+          amount: cogsTotal,
+          category: 'Custo de Produto',
+          description: `Custo: ${product.name} x${item.quantity}`,
+          stock_movement_id: movement?.id || null,
+          is_cogs: true,
+          record_date: recordDate,
+        })
       }
 
       // Product commission (per product, per barber)

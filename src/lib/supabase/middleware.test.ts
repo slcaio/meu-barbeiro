@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
 const mockGetUser = vi.fn()
-const mockGetClaims = vi.fn()
+  const mockGetClaims = vi.fn()
 
 vi.mock('@supabase/ssr', () => ({
   createServerClient: vi.fn(() => ({

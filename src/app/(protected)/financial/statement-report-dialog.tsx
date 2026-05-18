@@ -30,6 +30,7 @@ interface Transaction {
 interface Summary {
   totalIncome: number
   expenses: number
+  cogs: number
   netProfit: number
 }
 
@@ -57,7 +58,7 @@ export function StatementReportDialog({
       return `${date};${type};${t.category};${description};${paymentMethod};${amount}`
     })
 
-    const totalsRow = `\n;;;;Receita Total;${summary.totalIncome.toFixed(2).replace('.', ',')}\n;;;;Despesas;${summary.expenses.toFixed(2).replace('.', ',')}\n;;;;Lucro Líquido;${summary.netProfit.toFixed(2).replace('.', ',')}`
+    const totalsRow = `\n;;;;Receita Total;${summary.totalIncome.toFixed(2).replace('.', ',')}\n;;;;Despesas;${summary.expenses.toFixed(2).replace('.', ',')}\n;;;;Custo de Produtos;${summary.cogs.toFixed(2).replace('.', ',')}\n;;;;Lucro Líquido;${summary.netProfit.toFixed(2).replace('.', ',')}`
 
     const csvContent = BOM + header + rows.join('\n') + totalsRow
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
@@ -89,7 +90,7 @@ export function StatementReportDialog({
 
         <div className="space-y-6 overflow-y-auto flex-1 pr-1">
           {/* Summary Cards */}
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
             <Card>
               <CardHeader className="pb-2 px-4 pt-4">
                 <CardTitle className="text-xs font-medium text-muted-foreground">Receita Total</CardTitle>
@@ -104,6 +105,14 @@ export function StatementReportDialog({
               </CardHeader>
               <CardContent className="px-4 pb-4">
                 <div className="text-lg sm:text-xl font-bold text-red-600 dark:text-red-400">{formatBRL(summary.expenses)}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2 px-4 pt-4">
+                <CardTitle className="text-xs font-medium text-muted-foreground">Custo de Produtos</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <div className="text-lg sm:text-xl font-bold text-amber-600 dark:text-amber-400">{formatBRL(summary.cogs)}</div>
               </CardContent>
             </Card>
             <Card>

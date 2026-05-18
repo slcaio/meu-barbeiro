@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Search, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, DollarSign } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, DollarSign, Package } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TransactionList } from './transaction-list'
 import { StatementReportDialog } from './statement-report-dialog'
 import { FinancialFilters } from './financial-filters'
+import { TransactionDetailsDialog, type TransactionDetail } from './transaction-details-dialog'
 
 const ITEMS_PER_PAGE = 30
 
@@ -23,6 +24,8 @@ interface Transaction {
   date: string
   source: 'appointment' | 'manual'
   paymentMethodName: string | null
+  isCogs: boolean
+  stockMovementId: string | null
 }
 
 interface Category {
@@ -34,6 +37,7 @@ interface Category {
 export function TransactionSection({ transactions, categories }: { transactions: Transaction[]; categories: Category[] }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [selectedTransaction, setSelectedTransaction] = useState<TransactionDetail | null>(null)
 
   const filteredTransactions = useMemo(() => {
     if (!searchTerm.trim()) return transactions
@@ -46,9 +50,12 @@ export function TransactionSection({ transactions, categories }: { transactions:
       .filter((t) => t.type === 'income')
       .reduce((sum, t) => sum + t.amount, 0)
     const expenses = filteredTransactions
-      .filter((t) => t.type === 'expense')
+      .filter((t) => t.type === 'expense' && !t.isCogs)
       .reduce((sum, t) => sum + t.amount, 0)
-    return { totalIncome, expenses, netProfit: totalIncome - expenses }
+    const cogs = filteredTransactions
+      .filter((t) => t.type === 'expense' && t.isCogs)
+      .reduce((sum, t) => sum + t.amount, 0)
+    return { totalIncome, expenses, cogs, netProfit: totalIncome - expenses - cogs }
   }, [filteredTransactions])
 
   const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE))
@@ -65,7 +72,7 @@ export function TransactionSection({ transactions, categories }: { transactions:
   return (
     <>
       {/* Summary Cards */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <Card className="relative overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
@@ -89,6 +96,19 @@ export function TransactionSection({ transactions, categories }: { transactions:
           <CardContent>
             <div className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400">
               {formatCurrency(filteredSummary.expenses)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="relative overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Custo de Produtos</CardTitle>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10">
+              <Package className="h-5 w-5 text-amber-500" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl sm:text-2xl font-bold text-amber-600 dark:text-amber-400">
+              {formatCurrency(filteredSummary.cogs)}
             </div>
           </CardContent>
         </Card>
@@ -128,7 +148,10 @@ export function TransactionSection({ transactions, categories }: { transactions:
           <CardTitle className="text-base font-semibold">Extrato Mensal</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <TransactionList transactions={paginatedTransactions} />
+          <TransactionList
+            transactions={paginatedTransactions}
+            onSelect={(t) => setSelectedTransaction(t)}
+          />
 
           {filteredTransactions.length > ITEMS_PER_PAGE && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-4 border-t">
@@ -163,6 +186,15 @@ export function TransactionSection({ transactions, categories }: { transactions:
           )}
         </CardContent>
       </Card>
+
+      <TransactionDetailsDialog
+        transaction={selectedTransaction}
+        open={selectedTransaction !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedTransaction(null)
+        }}
+        categories={categories}
+      />
     </>
   )
 }
